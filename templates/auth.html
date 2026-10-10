@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7fb">
+  <title>{{ {"setup": "Create administrator", "register": "Create account"}.get(mode, "Sign in") }} · MITS PDF Utility</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
+</head>
+<body class="auth-page">
+  <main class="auth-layout">
+    <section class="auth-brand">
+      <a class="brand-lockup" href="{{ url_for('home') }}">
+        <img src="{{ url_for('brand_icon') }}" alt="" class="brand-icon">
+        <span>MITS <strong>PDF Utility</strong></span>
+      </a>
+      <div class="brand-copy">
+        <span class="eyebrow">A clearer way to work with documents</span>
+        <h1>Everything your PDFs need.<br><em>In one place.</em></h1>
+        <p>A focused workspace for organizing, converting, securing, and understanding your documents.</p>
+      </div>
+      <div class="brand-foot"><span class="status-dot"></span> Private, local processing on this computer</div>
+    </section>
+    <section class="auth-side">
+      <div class="auth-card">
+        {% if mode == "setup" %}
+          <span class="eyebrow">One-time setup</span>
+          <h2>Create your administrator</h2>
+          <p class="muted">Set up the first account. You can invite approved users after signing in.</p>
+        {% elif mode == "register" %}
+          <span class="eyebrow">Authorized access</span>
+          <h2>Create your account</h2>
+          <p class="muted">Ask an administrator for a one-time invitation code.</p>
+        {% else %}
+          <span class="eyebrow">Welcome back</span>
+          <h2>Sign in to your workspace</h2>
+          <p class="muted">Your documents stay on this computer while they are being processed.</p>
+        {% endif %}
+
+        {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+        {% with messages = get_flashed_messages() %}
+          {% for message in messages %}<div class="alert">{{ message }}</div>{% endfor %}
+        {% endwith %}
+        <form method="post" class="auth-form">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          {% if mode == "register" %}
+            <label for="invitation">Invitation code</label>
+            <input id="invitation" name="invitation" autocomplete="one-time-code" required>
+          {% endif %}
+          <label for="username">Username</label>
+          <input id="username" name="username" value="{{ username }}" autocomplete="username" maxlength="64" required autofocus>
+          <label for="password">Password <span class="muted">(at least 12 characters)</span></label>
+          <input id="password" name="password" type="password" autocomplete="{{ 'new-password' if mode != 'login' else 'current-password' }}" minlength="12" required>
+          <button class="button button-primary button-wide" type="submit">
+            {{ {"setup": "Create administrator", "register": "Create account"}.get(mode, "Sign in") }}
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+        <div class="auth-links">
+          {% if mode == "login" %}
+            <span>Have an invitation?</span> <a href="{{ url_for('register') }}">Create an account</a>
+          {% elif mode == "register" %}
+            <a href="{{ url_for('login') }}">Return to sign in</a>
+          {% endif %}
+        </div>
+        <p class="auth-note"><span aria-hidden="true">⌑</span> Accounts and documents are managed on this computer.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
