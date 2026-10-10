@@ -1,5 +1,12 @@
 # MITS PDF Utility
 
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)](https://www.microsoft.com/windows)
+
+A desktop and local web application for merging, splitting, compressing, converting,
+and organizing PDF documents. Files are processed on your computer, with optional
+OCR and Office-conversion support.
+
 ## Requirements
 
 - Python 3.10 or newer
