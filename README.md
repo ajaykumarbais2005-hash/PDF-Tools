@@ -1,4 +1,4 @@
-# MITS PDF Utility
+# PDF Tools
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)](https://www.microsoft.com/windows)
@@ -40,7 +40,7 @@ python main.py
 ```
 
 In VS Code, open this folder and choose **Run Application** from the Tasks menu,
-or launch the **Run MITS PDF Utility (main.py)** debug configuration.
+or launch the **Run PDF Tools (main.py)** debug configuration.
 
 ## Launch the website locally
 
@@ -78,7 +78,8 @@ PBKDF2-HMAC-SHA256 hashes, not plain-text passwords. Five failed sign-in
 attempts lock that username for 60 seconds, and an idle signed-in session locks
 after 15 minutes.
 
-The local account database is stored at
+For compatibility with existing installations, the local account database is
+stored at
 `%LOCALAPPDATA%\MITS PDF Utility\accounts.sqlite3` for the current Windows
 account. This is a per-Windows-account desktop sign-in gate, not a college-wide
 identity service: another Windows profile has its own first-run setup. Anyone

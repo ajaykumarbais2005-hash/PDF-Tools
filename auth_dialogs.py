@@ -21,7 +21,7 @@ class AccountManagerDialog:
         self.current_user = current_user
         self.current_username = current_user["username"]
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("Manage Authorized Users - MITS PDF UTILITY")
+        self.dialog.title("Manage Authorized Users - PDF TOOLS")
         self.dialog.geometry("740x520")
         self.dialog.minsize(660, 440)
         self.dialog.configure(bg=BG)

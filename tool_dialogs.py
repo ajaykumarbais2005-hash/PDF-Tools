@@ -1,6 +1,6 @@
 """
-MITS PDF UTILITY - Tool Dialogs & User Interfaces
-Modal dialogs for all 19 PDF and Office tools, matching the exact MITS PDF Utility design aesthetic.
+PDF TOOLS - Tool Dialogs & User Interfaces
+Modal dialogs for all 19 PDF and Office tools.
 """
 
 import os
@@ -14,7 +14,7 @@ from PIL import Image, ImageTk
 import backend
 import pymupdf
 
-# Color palette matching MITS PDF Utility
+# Color palette matching PDF Tools
 BG = "#F5F7FB"
 WHITE = "#FFFFFF"
 PRIMARY = "#4F5FE8"
@@ -37,7 +37,7 @@ class BaseToolDialog:
         self.subtitle_text = subtitle
         
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title(f"{title} - MITS PDF UTILITY")
+        self.dialog.title(f"{title} - PDF TOOLS")
         self.dialog.geometry(f"{width}x{height}")
         self.dialog.minsize(560, 480)
         self.dialog.configure(bg=BG)
@@ -407,7 +407,7 @@ class CreatePDFDialog(BaseToolDialog):
 
         tk.Label(c1, text="Author", font=("Arial", 10), fg=DARK, bg=WHITE).pack(anchor="w", padx=16, pady=(0, 2))
         self.author_entry = tk.Entry(c1, font=("Arial", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1)
-        self.author_entry.insert(0, "MITS User")
+        self.author_entry.insert(0, "PDF Tools User")
         self.author_entry.pack(fill="x", padx=16, pady=(0, 10), ipady=5)
 
         # Card 2: Layout & Format
@@ -1465,7 +1465,7 @@ class PDFPreviewDialog:
         self.current_photo = None
 
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("PDF Preview - MITS PDF UTILITY")
+        self.dialog.title("PDF Preview - PDF TOOLS")
         self.dialog.geometry("960x780")
         self.dialog.minsize(700, 500)
         self.dialog.configure(bg=BG)

@@ -1,6 +1,6 @@
 const tools = [
   { id: "create-pdf", title: "Create PDF", desc: "Turn your text into a polished PDF.", category: "Create", icon: "✦", fields: [
-    { name: "title", label: "Document title", value: "My Document" }, { name: "author", label: "Author", value: "MITS User" },
+    { name: "title", label: "Document title", value: "My Document" }, { name: "author", label: "Author", value: "PDF Tools User" },
     { name: "page_size", label: "Page size", type: "select", options: [["A4", "A4"], ["Letter", "Letter"]] },
     { name: "orientation", label: "Orientation", type: "select", options: [["Portrait", "portrait"], ["Landscape", "landscape"]] },
     { name: "font_size", label: "Font size (6–72 pt)", type: "number", value: "11", min: "6", max: "72" },

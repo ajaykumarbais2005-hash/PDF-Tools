@@ -1,5 +1,5 @@
 """
-MITS PDF UTILITY - Backend Processing Engine
+PDF TOOLS - Backend Processing Engine
 Handles all PDF, Word, PowerPoint, Image, and OCR operations.
 """
 
@@ -152,7 +152,7 @@ def reveal_in_explorer(file_path):
 # 1. CREATE PDF
 # ==========================================
 
-def create_pdf(output_path, title="Untitled Document", author="MITS User",
+def create_pdf(output_path, title="Untitled Document", author="PDF Tools User",
                text_content="", page_size="A4", orientation="portrait",
                image_path=None, font_size=11):
     """Create a PDF with escaped text, optional image, and page settings."""

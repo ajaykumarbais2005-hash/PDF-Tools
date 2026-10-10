@@ -1,4 +1,4 @@
-"""Local per-Windows-user accounts for the MITS PDF Utility."""
+"""Local per-Windows-user accounts for PDF Tools."""
 
 import hashlib
 import hmac

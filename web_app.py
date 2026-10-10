@@ -1,4 +1,4 @@
-"""Local browser interface for the MITS PDF Utility processing engine."""
+"""Local browser interface for the PDF Tools processing engine."""
 
 import io
 import os
@@ -302,7 +302,7 @@ def create_app(account_store=None, data_directory=None):
                 result = backend.create_pdf(
                     str(output_pdf),
                     title=option("title", "Untitled Document"),
-                    author=option("author", "MITS User"),
+                    author=option("author", "PDF Tools User"),
                     text_content=option("text_content"),
                     page_size=option("page_size", "A4"),
                     orientation=option("orientation", "portrait"),
@@ -511,5 +511,5 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    print("MITS PDF Utility is starting at http://127.0.0.1:5000")
+    print("PDF Tools is starting at http://127.0.0.1:5000")
     app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5000")), debug=False)

@@ -10,7 +10,7 @@ import auth_store
 import tool_dialogs
 
 
-APP_NAME = "MITS PDF UTILITY"
+APP_NAME = "PDF TOOLS"
 
 BG = "#F3F6FF"
 WHITE = "#FFFFFF"
@@ -118,7 +118,7 @@ class MITS_PDF_UTILITY:
         self.brand_images["login"] = self.load_brand_icon(34)
         if self.brand_images["login"]:
             tk.Label(top, image=self.brand_images["login"], bg=WHITE).pack(side="left", padx=(18, 8))
-        tk.Label(top, text="MITS PDF UTILITY", font=("Arial", 16, "bold"), fg=DARK, bg=WHITE).pack(side="left")
+        tk.Label(top, text="PDF TOOLS", font=("Arial", 16, "bold"), fg=DARK, bg=WHITE).pack(side="left")
         for label, command in (
             ("—", self.root.iconify),
             ("□", self.toggle_maximize),
@@ -134,8 +134,8 @@ class MITS_PDF_UTILITY:
         body.pack(fill="both", expand=True)
         left = tk.Frame(body, bg=PRIMARY)
         left.place(relx=0, rely=0, relwidth=0.46, relheight=1)
-        tk.Label(left, text="MITS", font=("Arial", 58, "bold"), fg=WHITE, bg=PRIMARY).pack(pady=(180, 0))
-        tk.Label(left, text="PDF UTILITY", font=("Arial", 42, "bold"), fg=WHITE, bg=PRIMARY).pack()
+        tk.Label(left, text="PDF", font=("Arial", 58, "bold"), fg=WHITE, bg=PRIMARY).pack(pady=(180, 0))
+        tk.Label(left, text="TOOLS", font=("Arial", 42, "bold"), fg=WHITE, bg=PRIMARY).pack()
         tk.Label(left, text="Professional PDF tools for your college workflow", font=("Arial", 16), fg="#E8EBFF", bg=PRIMARY).pack(pady=12)
         tk.Label(left, text="Authorized access  ·  Private local accounts", font=("Arial", 12), fg="#E8EBFF", bg=PRIMARY).pack(pady=4)
 
@@ -530,7 +530,7 @@ class MITS_PDF_UTILITY:
 
         tk.Label(
             brand_wrap,
-            text="MITS PDF UTILITY",
+            text="PDF TOOLS",
             font=("Arial", 21, "bold"),
             fg=PRIMARY,
             bg=WHITE
