@@ -537,6 +537,9 @@ def pdf_to_ppt(input_path, output_path, dpi=150, widescreen=True):
     """
     Convert each PDF page into a high-resolution slide in a PowerPoint presentation.
     """
+    dpi = int(dpi)
+    if not 36 <= dpi <= 600:
+        raise ValueError("Resolution must be between 36 and 600 DPI.")
     doc = pymupdf.open(input_path)
     prs = pptx.Presentation()
     

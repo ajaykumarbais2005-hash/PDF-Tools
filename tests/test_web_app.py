@@ -1,8 +1,11 @@
 import io
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
+import docx
+import pptx
 from reportlab.pdfgen import canvas
 
 import auth_store
@@ -146,6 +149,149 @@ class WebsiteFlowTests(unittest.TestCase):
         response = self.client.post("/api/tools/pdf-information")
         self.assertEqual(response.status_code, 400)
         self.assertIn("session expired", response.json["error"].lower())
+
+    def test_all_twenty_tools_run_end_to_end(self):
+        self.create_admin()
+        csrf = self.csrf()
+
+        pdf_stream = io.BytesIO()
+        pdf_canvas = canvas.Canvas(pdf_stream)
+        for page_number in range(1, 4):
+            pdf_canvas.drawString(72, 720, f"PDF Tools test page {page_number}")
+            pdf_canvas.showPage()
+        pdf_canvas.save()
+        pdf_bytes = pdf_stream.getvalue()
+
+        word_stream = io.BytesIO()
+        word_document = docx.Document()
+        word_document.add_heading("Test document", level=1)
+        word_document.add_paragraph("PDF Tools conversion test.")
+        word_document.save(word_stream)
+        word_bytes = word_stream.getvalue()
+
+        presentation_stream = io.BytesIO()
+        presentation = pptx.Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[1])
+        slide.shapes.title.text = "PDF Tools slide"
+        presentation.save(presentation_stream)
+        presentation_bytes = presentation_stream.getvalue()
+
+        def run_tool(name, fields=None, uploads=None):
+            data = dict(fields or {})
+            if uploads:
+                data.update(uploads)
+            response = self.client.post(
+                f"/api/tools/{name}",
+                headers={"X-CSRF-Token": csrf},
+                data=data,
+                content_type="multipart/form-data",
+            )
+            self.assertEqual(response.status_code, 200, f"{name}: {response.get_data(as_text=True)}")
+            return response.json
+
+        def download_result(payload, extension=None):
+            self.assertIn("download_url", payload)
+            response = self.client.get(payload["download_url"])
+            self.assertEqual(response.status_code, 200)
+            content = response.get_data()
+            disposition = response.headers["Content-Disposition"].lower()
+            response.close()
+            self.assertGreater(len(content), 0)
+            if extension:
+                self.assertTrue(
+                    disposition.endswith(extension.lower()),
+                    disposition,
+                )
+            return content
+
+        payload = run_tool("create-pdf", {"title": "Created PDF", "text_content": "Created from the web app."})
+        download_result(payload, ".pdf")
+
+        payload = run_tool("merge-pdfs", uploads={
+            "files": [(io.BytesIO(pdf_bytes), "first.pdf"), (io.BytesIO(pdf_bytes), "second.pdf")]
+        })
+        self.assertEqual(payload["result"]["total_pages"], 6)
+        download_result(payload, ".pdf")
+
+        payload = run_tool("split-pdf", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        split_bytes = download_result(payload, ".zip")
+        with zipfile.ZipFile(io.BytesIO(split_bytes)) as archive:
+            self.assertEqual(len(archive.namelist()), 3)
+
+        payload = run_tool("lock-pdf", {"user_password": "test-password"},
+                           {"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        locked_pdf = download_result(payload, ".pdf")
+        payload = run_tool("unlock-pdf", {"password": "test-password"},
+                           {"file": (io.BytesIO(locked_pdf), "locked.pdf")})
+        download_result(payload, ".pdf")
+
+        payload = run_tool("compress-pdf", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        download_result(payload, ".pdf")
+
+        payload = run_tool("watermark-pdf", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        self.assertEqual(payload["result"]["pages_watermarked"], 3)
+        download_result(payload, ".pdf")
+
+        payload = run_tool("pdf-to-ppt", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        download_result(payload, ".pptx")
+        invalid_dpi = self.client.post(
+            "/api/tools/pdf-to-ppt",
+            headers={"X-CSRF-Token": csrf},
+            data={
+                "dpi": "601",
+                "file": (io.BytesIO(pdf_bytes), "source.pdf"),
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(invalid_dpi.status_code, 400)
+        self.assertIn("36 and 600 DPI", invalid_dpi.json["error"])
+
+        payload = run_tool("pdf-to-word", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        download_result(payload, ".docx")
+
+        payload = run_tool("pdf-to-image", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        images_zip = download_result(payload, ".zip")
+        with zipfile.ZipFile(io.BytesIO(images_zip)) as archive:
+            self.assertEqual(len(archive.namelist()), 3)
+
+        payload = run_tool("ocr", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        extracted_ocr = download_result(payload, ".txt").decode("utf-8")
+        self.assertIn("test page 1", extracted_ocr)
+
+        payload = run_tool("extract-text", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        extracted_text = download_result(payload, ".txt").decode("utf-8")
+        self.assertIn("test page 3", extracted_text)
+
+        payload = run_tool("ppt-to-pdf", uploads={"file": (io.BytesIO(presentation_bytes), "source.pptx")})
+        download_result(payload, ".pdf")
+
+        payload = run_tool("word-to-pdf", uploads={"file": (io.BytesIO(word_bytes), "source.docx")})
+        download_result(payload, ".pdf")
+
+        payload = run_tool("rotate-pdf", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        self.assertEqual(payload["result"]["pages_rotated"], 3)
+        download_result(payload, ".pdf")
+
+        payload = run_tool("delete-pages", {"pages_to_delete": "2"},
+                           {"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        self.assertEqual(payload["result"]["pages_remaining"], 2)
+        download_result(payload, ".pdf")
+
+        payload = run_tool("reorder-pages", {"page_order": "3, 2, 1"},
+                           {"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        download_result(payload, ".pdf")
+
+        payload = run_tool("pdf-information", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        self.assertEqual(payload["result"]["page_count"], 3)
+
+        payload = run_tool("update-metadata", {"title": "Updated title", "author": "Test author"},
+                           {"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        download_result(payload, ".pdf")
+
+        payload = run_tool("pdf-preview", {"page_number": "2", "zoom": "1"},
+                           {"file": (io.BytesIO(pdf_bytes), "source.pdf")})
+        self.assertEqual(payload["result"]["page_number"], 2)
+        self.assertTrue(payload["result"]["image"].startswith("data:image/png;base64,"))
 
 
 if __name__ == "__main__":
