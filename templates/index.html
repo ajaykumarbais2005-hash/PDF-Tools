@@ -10,6 +10,7 @@
   <script src="{{ url_for('static', filename='site.js') }}" defer></script>
 </head>
 <body class="app-page" data-username="{{ user.username }}" data-role="{{ user.role }}">
+  <button class="sidebar-backdrop" id="sidebar-backdrop" type="button" aria-label="Close navigation" tabindex="-1"></button>
   <aside class="sidebar" id="sidebar">
     <a class="brand-lockup sidebar-brand" href="{{ url_for('home') }}">
       <img src="{{ url_for('brand_icon') }}" alt="" class="brand-icon">
@@ -17,7 +18,7 @@
     </a>
     <div class="workspace-label">WORKSPACE</div>
     <nav class="side-nav" aria-label="Main navigation">
-      <a class="nav-item active" href="#tools"><span class="nav-icon">▦</span> All tools <span class="nav-count">20</span></a>
+      <a class="nav-item active" href="#tools"><span class="nav-icon">▦</span> All tools <span class="nav-count" id="all-tools-count">20</span></a>
       <a class="nav-item" href="#favorites"><span class="nav-icon">☆</span> Popular tools</a>
       <a class="nav-item" href="#about"><span class="nav-icon">ⓘ</span> About this app</a>
     </nav>
@@ -40,7 +41,7 @@
 
   <main class="main-panel">
     <header class="topbar">
-      <button id="menu-toggle" class="icon-button mobile-menu" aria-label="Open navigation">☰</button>
+      <button id="menu-toggle" class="icon-button mobile-menu" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button>
       <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong>All tools</strong></div>
       <div class="topbar-actions">
         <span class="local-badge"><span class="status-dot"></span> Local workspace</span>
@@ -51,12 +52,23 @@
     </header>
 
     <div class="content">
-      <section class="hero">
-        <div class="hero-copy">
-          <span class="eyebrow">PDF TOOLS · LOCAL WORKSPACE</span>
-          <h1>Get your PDF work done.</h1>
-          <p>Merge, convert, organize, and protect documents on this computer.</p>
-          <a href="#tools" class="button button-light">Browse all tools <span aria-hidden="true">↓</span></a>
+      <section id="tools" class="tools-section">
+        <div class="section-heading tools-heading">
+          <div><span class="eyebrow">YOUR TOOLKIT</span><h2>Find the right tool</h2><p>Pick a tool to get started. Your source file is never changed.</p></div>
+          <label class="search-box"><span aria-hidden="true">⌕</span><input id="tool-search" type="search" placeholder="Search tools..." aria-label="Search tools"><kbd>/</kbd></label>
+        </div>
+        <div class="category-tabs" id="category-tabs" role="group" aria-label="Filter tools by category"></div>
+        <div class="tool-count" id="tool-count" aria-live="polite"></div>
+        <div class="tool-grid" id="tool-grid"></div>
+        <div class="empty-state" id="empty-state" hidden>
+          <strong>No tools found</strong>
+          <p>Try a different search or browse one of these popular tools.</p>
+          <div class="empty-suggestions">
+            <button class="text-link" type="button" data-search="merge">Merge PDFs</button>
+            <button class="text-link" type="button" data-search="compress">Compress PDF</button>
+            <button class="text-link" type="button" data-search="convert">Convert files</button>
+            <button class="text-link" type="button" data-search="">Clear search</button>
+          </div>
         </div>
       </section>
 
@@ -68,14 +80,12 @@
         <div class="popular-grid" id="popular-tools"></div>
       </section>
 
-      <section id="tools" class="tools-section">
-        <div class="section-heading tools-heading">
-          <div><span class="eyebrow">YOUR TOOLKIT</span><h2>Find the right tool</h2><p>Pick a tool to get started. Your source file is never changed.</p></div>
-          <label class="search-box"><span aria-hidden="true">⌕</span><input id="tool-search" type="search" placeholder="Search tools..." aria-label="Search tools"><kbd>/</kbd></label>
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">PDF TOOLS · LOCAL WORKSPACE</span>
+          <h1>Get your PDF work done.</h1>
+          <p>Merge, convert, organize, and protect documents on this computer.</p>
         </div>
-        <div class="category-tabs" id="category-tabs" role="tablist" aria-label="Tool categories"></div>
-        <div class="tool-grid" id="tool-grid"></div>
-        <div class="empty-state" id="empty-state" hidden>No tools match that search. Try a different keyword.</div>
       </section>
 
       <section id="about" class="about-strip">
@@ -86,10 +96,14 @@
   </main>
 
   <div class="modal-backdrop" id="tool-modal" hidden>
-    <section class="tool-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <section class="tool-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-description" tabindex="-1">
       <header class="modal-header"><div class="modal-title-wrap"><span class="tool-icon modal-tool-icon" id="modal-icon"></span><div><span class="eyebrow" id="modal-category"></span><h2 id="modal-title"></h2></div></div><button class="icon-button close-modal" data-close-modal aria-label="Close">×</button></header>
       <p class="modal-description" id="modal-description"></p>
       <form id="tool-form" class="tool-form" enctype="multipart/form-data"></form>
+      <div id="tool-progress" class="tool-progress" hidden role="status" aria-live="polite" aria-atomic="true">
+        <span class="spinner" aria-hidden="true"></span><span class="progress-message"></span>
+        <span class="progress-track" aria-hidden="true"><span></span></span>
+      </div>
       <div id="tool-result" class="tool-result" hidden aria-live="polite"></div>
       <div id="tool-error" class="alert alert-error" hidden role="alert"></div>
     </section>
@@ -97,7 +111,7 @@
 
   {% if user.role == "admin" %}
   <div class="modal-backdrop" id="admin-modal" hidden>
-    <section class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+    <section class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-title" tabindex="-1">
       <header class="modal-header"><div><span class="eyebrow">ADMINISTRATION</span><h2 id="admin-title">Manage accounts</h2></div><button class="icon-button close-modal" data-close-modal aria-label="Close">×</button></header>
       <p class="muted">Invite people you authorize, and manage existing accounts.</p>
       <div class="invite-box"><div><strong>Invite an approved user</strong><p>Each code can be used once and expires in seven days.</p></div><button class="button button-primary button-small" id="create-invitation">Create invite</button></div>

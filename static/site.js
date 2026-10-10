@@ -9,7 +9,7 @@ const tools = [
     { name: "filename", label: "Download filename", value: "document.pdf" },
   ]},
   { id: "merge-pdfs", title: "Merge PDFs", desc: "Combine documents in the order you choose.", category: "Organize", icon: "▤", popular: true, fields: [
-    { name: "files", label: "PDF files (select at least two)", type: "files", accept: ".pdf", multiple: true, full: true },
+    { name: "files", label: "PDF files (select at least two)", type: "files", accept: ".pdf", multiple: true, minFiles: 2, full: true },
     { name: "filename", label: "Download filename", value: "merged.pdf", full: true },
   ]},
   { id: "split-pdf", title: "Split PDF", desc: "Separate pages or extract page ranges.", category: "Organize", icon: "⫶", fields: [
@@ -127,6 +127,14 @@ const popular = document.querySelector("#popular-tools");
 const tabs = document.querySelector("#category-tabs");
 let activeCategory = "All tools";
 let activeTool = null;
+let lastFocusedElement = null;
+let processingTool = false;
+let activeDialog = null;
+
+function searchableTools() {
+  const search = document.querySelector("#tool-search").value.trim().toLowerCase();
+  return tools.filter((tool) => `${tool.title} ${tool.desc} ${tool.category}`.toLowerCase().includes(search));
+}
 
 function card(tool, compact = false) {
   const button = document.createElement("button");
@@ -161,24 +169,31 @@ function card(tool, compact = false) {
 }
 
 function renderTools() {
-  const search = document.querySelector("#tool-search").value.trim().toLowerCase();
-  const filtered = tools.filter((tool) => {
-    const categoryMatch = activeCategory === "All tools" || tool.category === activeCategory;
-    const searchMatch = `${tool.title} ${tool.desc} ${tool.category}`.toLowerCase().includes(search);
-    return categoryMatch && searchMatch;
-  });
+  const filtered = searchableTools().filter((tool) => activeCategory === "All tools" || tool.category === activeCategory);
   grid.replaceChildren(...filtered.map((tool) => card(tool)));
   document.querySelector("#empty-state").hidden = filtered.length > 0;
+  const count = document.querySelector("#tool-count");
+  if (count) count.textContent = `${filtered.length} ${filtered.length === 1 ? "tool" : "tools"}${activeCategory === "All tools" ? "" : ` in ${activeCategory}`}`;
+  const allToolsCount = document.querySelector("#all-tools-count");
+  if (allToolsCount) allToolsCount.textContent = String(tools.length);
 }
 
 function renderCategories() {
+  const filtered = searchableTools();
+  tabs.replaceChildren();
   categories.forEach((category) => {
+    const count = category === "All tools" ? filtered.length : filtered.filter((tool) => tool.category === category).length;
     const button = document.createElement("button");
     button.type = "button";
     button.className = `category-tab${category === activeCategory ? " active" : ""}`;
-    button.textContent = category;
-    button.setAttribute("role", "tab");
-    button.setAttribute("aria-selected", String(category === activeCategory));
+    button.setAttribute("aria-pressed", String(category === activeCategory));
+    button.setAttribute("aria-label", `${category}, ${count} ${count === 1 ? "tool" : "tools"}`);
+    const name = document.createElement("span");
+    name.textContent = category;
+    const total = document.createElement("span");
+    total.className = "category-count";
+    total.textContent = String(count);
+    button.append(name, total);
     button.addEventListener("click", () => {
       activeCategory = category;
       renderCategories();
@@ -188,9 +203,28 @@ function renderCategories() {
   });
 }
 
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function fileMatchesAccept(file, accept) {
+  if (!accept) return true;
+  return accept.split(",").some((entry) => {
+    const rule = entry.trim().toLowerCase();
+    return rule.startsWith(".")
+      ? file.name.toLowerCase().endsWith(rule)
+      : rule.endsWith("/*")
+        ? file.type.startsWith(rule.slice(0, -1))
+        : file.type.toLowerCase() === rule;
+  });
+}
+
 function addField(form, field) {
   const group = document.createElement("div");
   group.className = `field-group${field.full ? " full" : ""}`;
+  group.dataset.fieldName = field.name;
   const label = document.createElement("label");
   label.className = "field-label";
   label.htmlFor = `field-${field.name}`;
@@ -218,12 +252,111 @@ function addField(form, field) {
     row.append(control, document.createTextNode(field.label));
     group.append(row);
     return group;
+  } else if (field.type === "file" || field.type === "files") {
+    control = document.createElement("input");
+    control.type = "file";
+    control.multiple = field.type === "files";
+    control.className = "file-input-hidden";
+    control.id = `field-${field.name}`;
+    control.name = field.name;
+    if (field.accept) control.accept = field.accept;
+    control.required = field.name !== "image";
+    const dropzone = document.createElement("label");
+    dropzone.className = "file-dropzone";
+    dropzone.htmlFor = control.id;
+    dropzone.tabIndex = -1;
+    const prompt = document.createElement("span");
+    prompt.className = "file-drop-prompt";
+    prompt.textContent = "Drop files here or browse";
+    const subtext = document.createElement("small");
+    subtext.textContent = field.type === "files" ? "You can add multiple files" : "Choose one file";
+    dropzone.append(prompt, subtext);
+    const selected = document.createElement("ul");
+    selected.className = "selected-files";
+    selected.id = `selected-${field.name}`;
+    selected.setAttribute("aria-live", "polite");
+    const fileError = document.createElement("small");
+    fileError.className = "field-error";
+    fileError.id = `error-${field.name}`;
+    fileError.hidden = true;
+    fileError.setAttribute("role", "status");
+    group.append(label, dropzone, control, selected, fileError);
+
+    const showFiles = () => {
+      selected.replaceChildren();
+      const files = [...control.files];
+      control.setCustomValidity(
+        field.minFiles && files.length < field.minFiles
+          ? `Select at least ${field.minFiles} PDF files.`
+          : ""
+      );
+      files.forEach((file, index) => {
+        const row = document.createElement("li");
+        const fileName = document.createElement("span");
+        fileName.className = "selected-file-name";
+        fileName.textContent = file.name;
+        const fileSize = document.createElement("small");
+        fileSize.textContent = formatFileSize(file.size);
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "remove-file";
+        remove.textContent = "Remove";
+        remove.setAttribute("aria-label", `Remove ${file.name}`);
+        remove.addEventListener("click", () => {
+          const remaining = files.filter((_, fileIndex) => fileIndex !== index);
+          const transfer = new DataTransfer();
+          remaining.forEach((item) => transfer.items.add(item));
+          control.files = transfer.files;
+          showFiles();
+        });
+        row.append(fileName, fileSize, remove);
+        selected.append(row);
+      });
+      fileError.hidden = true;
+      fileError.textContent = "";
+      dropzone.classList.toggle("has-files", files.length > 0);
+    };
+    control.addEventListener("change", showFiles);
+    for (const eventName of ["dragenter", "dragover"]) {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.add("is-dragging");
+      });
+    }
+    for (const eventName of ["dragleave", "drop"]) {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.remove("is-dragging");
+      });
+    }
+    dropzone.addEventListener("drop", (event) => {
+      const dropped = [...event.dataTransfer.files];
+      const accepted = dropped.filter((file) => fileMatchesAccept(file, field.accept));
+      const rejected = dropped.length - accepted.length;
+      const transfer = new DataTransfer();
+      const current = field.type === "files" ? [...control.files] : [];
+      [...current, ...(field.type === "files" ? accepted : accepted.slice(0, 1))].forEach((file) => {
+        if (![...transfer.files].some((item) =>
+          item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
+        )) transfer.items.add(file);
+      });
+      control.files = transfer.files;
+      showFiles();
+      if (rejected) {
+        fileError.textContent = `${rejected} file${rejected === 1 ? "" : "s"} skipped: choose ${field.accept.replaceAll(",", ", ")} files.`;
+        fileError.hidden = false;
+      }
+    });
+    if (field.hint) {
+      const hint = document.createElement("small");
+      hint.className = "field-hint";
+      hint.textContent = field.hint;
+      group.append(hint);
+    }
+    return group;
   } else {
     control = document.createElement("input");
     control.type = field.type || "text";
-    if (field.type === "files") control.multiple = true;
-    if (field.type === "files") control.type = "file";
-    if (field.accept) control.accept = field.accept;
     if (field.value !== undefined) control.value = field.value;
     if (field.min) control.min = field.min;
     if (field.max) control.max = field.max;
@@ -232,7 +365,6 @@ function addField(form, field) {
   control.id = `field-${field.name}`;
   control.name = field.name;
   control.className = "field-control";
-  if (field.type === "file" || field.type === "files") control.required = ["file", "files"].includes(field.type) && field.name !== "image";
   group.append(label, control);
   if (field.hint) {
     const hint = document.createElement("small");
@@ -267,15 +399,90 @@ function openTool(tool) {
   form.append(actions);
   document.querySelector("#tool-result").hidden = true;
   document.querySelector("#tool-error").hidden = true;
-  document.querySelector("#tool-modal").hidden = false;
-  document.body.classList.add("modal-open");
-  form.querySelector("input, textarea, select")?.focus();
+  document.querySelector("#tool-progress").hidden = true;
+  openDialog(document.querySelector("#tool-modal"));
+  (form.querySelector(".field-control:not(.file-input-hidden)") || form.querySelector(".file-input-hidden"))?.focus();
 }
 
 function closeTool() {
-  document.querySelector("#tool-modal").hidden = true;
-  document.body.classList.remove("modal-open");
+  if (processingTool) return;
+  closeDialog(document.querySelector("#tool-modal"));
   activeTool = null;
+}
+
+function openDialog(dialog) {
+  lastFocusedElement = document.activeElement;
+  activeDialog = dialog;
+  dialog.hidden = false;
+  document.body.classList.add("modal-open");
+  (dialog.querySelector(".close-modal") || dialog).focus();
+}
+
+function closeDialog(dialog) {
+  if (!dialog || dialog.hidden || (dialog.id === "tool-modal" && processingTool)) return;
+  dialog.hidden = true;
+  if (activeDialog === dialog) activeDialog = null;
+  if (!document.querySelector(".modal-backdrop:not([hidden])")) document.body.classList.remove("modal-open");
+  if (lastFocusedElement?.isConnected) lastFocusedElement.focus();
+}
+
+function closeAdmin() {
+  closeDialog(document.querySelector("#admin-modal"));
+}
+
+function clearFieldErrors(form) {
+  form.querySelectorAll("[aria-invalid='true']").forEach((control) => {
+    control.removeAttribute("aria-invalid");
+    if (control.getAttribute("aria-describedby")?.startsWith("server-error-")) {
+      control.removeAttribute("aria-describedby");
+    }
+  });
+  form.querySelectorAll(".server-field-error").forEach((error) => error.remove());
+}
+
+function showFieldError(form, fieldName, message) {
+  const group = [...form.querySelectorAll(".field-group")].find((item) => item.dataset.fieldName === fieldName);
+  const control = group?.querySelector("input:not([type=hidden]), select, textarea");
+  if (!group || !control) return false;
+  control.setAttribute("aria-invalid", "true");
+  const error = document.createElement("small");
+  error.className = "field-error server-field-error";
+  error.id = `server-error-${fieldName}`;
+  error.textContent = message;
+  group.append(error);
+  control.setAttribute("aria-describedby", error.id);
+  control.focus();
+  return true;
+}
+
+function fieldForError(message, requestedField) {
+  if (requestedField && activeTool.fields.some((field) => field.name === requestedField)) return requestedField;
+  const lowerMessage = message.toLowerCase();
+  const directMatch = activeTool.fields.find((field) =>
+    lowerMessage.includes(field.name.replaceAll("_", " ")) || lowerMessage.includes(field.label.toLowerCase())
+  );
+  if (directMatch) return directMatch.name;
+  if (/password|decrypt|encrypted|unlock/.test(lowerMessage)) {
+    const passwordField = activeTool.fields.find((field) => field.type === "password");
+    if (passwordField) return passwordField.name;
+  }
+  if (/page|range/.test(lowerMessage)) {
+    const pageField = activeTool.fields.find((field) => /page|range/i.test(`${field.name} ${field.label}`));
+    if (pageField) return pageField.name;
+  }
+  if (/resolution|dpi|zoom/.test(lowerMessage)) {
+    const resolutionField = activeTool.fields.find((field) => /dpi|zoom|resolution/i.test(`${field.name} ${field.label}`));
+    if (resolutionField) return resolutionField.name;
+  }
+  if (/filename|file name/.test(lowerMessage)) {
+    const filenameField = activeTool.fields.find((field) => /filename/i.test(field.name));
+    if (filenameField) return filenameField.name;
+  }
+  if (/file|upload|pdf|document/.test(lowerMessage)) {
+    const fileFields = activeTool.fields.filter((field) => ["file", "files"].includes(field.type));
+    if (fileFields.length === 1) return fileFields[0].name;
+  }
+  return null;
 }
 
 function detailRows(result) {
@@ -289,9 +496,9 @@ function detailRows(result) {
   entries.slice(0, 10).forEach(([key, value]) => {
     const item = document.createElement("div");
     const dt = document.createElement("dt");
-    dt.textContent = key.replaceAll("_", " ");
+    dt.textContent = key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
     const dd = document.createElement("dd");
-    dd.textContent = String(value);
+    dd.textContent = typeof value === "boolean" ? (value ? "Yes" : "No") : String(value);
     item.append(dt, dd);
     dl.append(item);
   });
@@ -300,15 +507,31 @@ function detailRows(result) {
 
 document.querySelector("#tool-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!activeTool) return;
+  if (!activeTool || processingTool) return;
   const form = event.currentTarget;
   const errorBox = document.querySelector("#tool-error");
   const resultBox = document.querySelector("#tool-result");
   errorBox.hidden = true;
   resultBox.hidden = true;
+  clearFieldErrors(form);
   const submit = form.querySelector('[type="submit"]');
+  const progressBox = document.querySelector("#tool-progress");
+  const progressMessage = progressBox.querySelector(".progress-message");
+  const closeButton = document.querySelector("#tool-modal .close-modal");
+  const cancelButton = form.querySelector('[data-close-modal]');
+  processingTool = true;
   submit.disabled = true;
-  submit.textContent = "Working…";
+  submit.textContent = "Processing…";
+  form.setAttribute("aria-busy", "true");
+  closeButton.disabled = true;
+  cancelButton.disabled = true;
+  progressMessage.textContent = "Uploading your files and starting the tool…";
+  progressBox.hidden = false;
+  const progressTimer = window.setInterval(() => {
+    progressMessage.textContent = progressMessage.textContent.startsWith("Still")
+      ? "Your files remain on this computer. Please keep this window open."
+      : "Still processing locally. Larger files may take a little longer…";
+  }, 12000);
   const data = new FormData();
   for (const field of activeTool.fields) {
     const control = form.elements.namedItem(field.name);
@@ -324,13 +547,24 @@ document.querySelector("#tool-form").addEventListener("submit", async (event) =>
     }
   }
   try {
+    progressMessage.textContent = "Processing your files locally…";
     const response = await fetch(`/api/tools/${activeTool.id}`, {
       method: "POST",
       headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content },
       body: data,
     });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "The operation could not be completed.");
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error(`The server returned an unreadable response (HTTP ${response.status}).`);
+    }
+    if (!response.ok) {
+      const message = payload.error || `The operation could not be completed (HTTP ${response.status}).`;
+      const fieldName = fieldForError(message, payload.field);
+      if (fieldName) showFieldError(form, fieldName, message);
+      throw new Error(message);
+    }
     resultBox.replaceChildren();
     const heading = document.createElement("div");
     heading.className = "result-heading";
@@ -340,6 +574,18 @@ document.querySelector("#tool-form").addEventListener("submit", async (event) =>
     message.textContent = payload.message;
     heading.append(check, message);
     resultBox.append(heading);
+    const summaryParts = [];
+    if (payload.result?.page_count !== undefined) {
+      const count = payload.result.page_count;
+      summaryParts.push(`${count} ${Number(count) === 1 ? "page" : "pages"}`);
+    }
+    if (payload.result?.word_count !== undefined) summaryParts.push(`${payload.result.word_count} words`);
+    if (summaryParts.length) {
+      const summary = document.createElement("p");
+      summary.className = "result-summary";
+      summary.textContent = summaryParts.join(" · ");
+      resultBox.append(summary);
+    }
     if (payload.result?.text) {
       const detail = document.createElement("p");
       detail.className = "result-detail";
@@ -359,28 +605,54 @@ document.querySelector("#tool-form").addEventListener("submit", async (event) =>
       const link = document.createElement("a");
       link.className = "result-download";
       link.href = payload.download_url;
-      link.textContent = "Download result ↓";
+      link.textContent = `Download ${activeTool.id === "merge-pdfs" ? "merged PDF" : "result"} ↓`;
       resultBox.append(link);
     }
     resultBox.hidden = false;
   } catch (error) {
-    errorBox.textContent = error.message;
+    errorBox.textContent = error instanceof TypeError
+      ? "Could not reach the local PDF Tools server. Check that it is running, then try again."
+      : error.message;
     errorBox.hidden = false;
   } finally {
+    window.clearInterval(progressTimer);
+    processingTool = false;
+    progressBox.hidden = true;
+    form.removeAttribute("aria-busy");
+    closeButton.disabled = false;
+    cancelButton.disabled = false;
     submit.disabled = false;
     submit.textContent = "Run tool →";
   }
 });
 
-document.querySelector("#tool-search").addEventListener("input", renderTools);
+document.querySelector("#tool-search").addEventListener("input", () => {
+  renderCategories();
+  renderTools();
+});
 document.querySelector("#tool-search").addEventListener("keydown", (event) => {
   if (event.key === "Enter") event.preventDefault();
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    if (activeDialog?.id === "admin-modal") closeAdmin();
     closeTool();
-    document.querySelector("#admin-modal")?.setAttribute("hidden", "");
-    document.querySelector("#sidebar").classList.remove("open");
+    closeSidebar();
+  }
+  if (event.key === "Tab" && activeDialog) {
+    const focusable = [...activeDialog.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )].filter((element) => element.getClientRects().length > 0);
+    if (!focusable.length) {
+      event.preventDefault();
+      activeDialog.focus();
+    } else if (event.shiftKey && document.activeElement === focusable[0]) {
+      event.preventDefault();
+      focusable[focusable.length - 1].focus();
+    } else if (!event.shiftKey && document.activeElement === focusable[focusable.length - 1]) {
+      event.preventDefault();
+      focusable[0].focus();
+    }
   }
   if (event.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
     event.preventDefault();
@@ -388,17 +660,38 @@ document.addEventListener("keydown", (event) => {
   }
 });
 document.querySelector("#tool-modal").addEventListener("click", (event) => {
-  if (event.target.id === "tool-modal") closeTool();
+  if (event.target.id === "tool-modal" && !processingTool) closeTool();
 });
 document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => {
-  document.querySelector("#admin-modal")?.setAttribute("hidden", "");
+  closeAdmin();
   closeTool();
 }));
-document.querySelector("#menu-toggle").addEventListener("click", () => document.querySelector("#sidebar").classList.toggle("open"));
+const sidebar = document.querySelector("#sidebar");
+const menuToggle = document.querySelector("#menu-toggle");
+function closeSidebar() {
+  sidebar.classList.remove("open");
+  document.body.classList.remove("sidebar-open");
+  menuToggle.setAttribute("aria-expanded", "false");
+}
+function toggleSidebar() {
+  const isOpen = !sidebar.classList.contains("open");
+  sidebar.classList.toggle("open", isOpen);
+  document.body.classList.toggle("sidebar-open", isOpen);
+  menuToggle.setAttribute("aria-expanded", String(isOpen));
+}
+menuToggle?.addEventListener("click", toggleSidebar);
+document.querySelector("#sidebar-backdrop")?.addEventListener("click", closeSidebar);
 document.querySelectorAll(".nav-item[href^='#']").forEach((link) => link.addEventListener("click", () => {
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
   link.classList.add("active");
-  document.querySelector("#sidebar").classList.remove("open");
+  closeSidebar();
+}));
+document.querySelectorAll("[data-search]").forEach((button) => button.addEventListener("click", () => {
+  document.querySelector("#tool-search").value = button.dataset.search;
+  activeCategory = "All tools";
+  renderCategories();
+  renderTools();
+  document.querySelector("#tool-search").focus();
 }));
 
 renderCategories();
@@ -480,7 +773,7 @@ if (adminModal) {
     adminError.hidden = false;
   }
   document.querySelector("#open-admin").addEventListener("click", () => {
-    adminModal.hidden = false;
+    openDialog(adminModal);
     loadUsers();
   });
   document.querySelector("#refresh-users").addEventListener("click", loadUsers);
@@ -503,6 +796,6 @@ if (adminModal) {
     finally { button.disabled = false; }
   });
   adminModal.addEventListener("click", (event) => {
-    if (event.target === adminModal) adminModal.hidden = true;
+    if (event.target === adminModal) closeAdmin();
   });
 }
