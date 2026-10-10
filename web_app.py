@@ -362,7 +362,8 @@ def create_app(account_store=None, data_directory=None):
                 elif tool_name == "pdf-to-ppt":
                     result = backend.pdf_to_ppt(input_path, str(job_path / "result.pptx"),
                                                 dpi=option("dpi", "150"),
-                                                widescreen=option("widescreen", "true") == "true")
+                                                widescreen=option("widescreen", "true") == "true",
+                                                language=option("language", "eng"))
                     output_pdf = job_path / "result.pptx"
                     download_name, message = "converted.pptx", "Your PowerPoint file is ready."
                 elif tool_name == "pdf-to-word":

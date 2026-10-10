@@ -38,9 +38,10 @@ const tools = [
     { name: "pages", label: "Pages", value: "all", hint: "Example: all, 1, 1-5" },
     { name: "image", label: "Optional stamp image (overrides text)", type: "file", accept: "image/png,image/jpeg,image/bmp", full: true },
   ]},
-  { id: "pdf-to-ppt", title: "PDF to PowerPoint", desc: "Convert each page into a presentation slide.", category: "Convert", popular: true, icon: "▰", fields: [
+  { id: "pdf-to-ppt", title: "PDF to PowerPoint", desc: "Create editable slides from PDF text; scanned pages are read with OCR.", category: "Convert", popular: true, icon: "▰", fields: [
     { name: "file", label: "PDF file", type: "file", accept: ".pdf", full: true },
-    { name: "dpi", label: "Resolution (36–600 DPI)", type: "number", value: "150", min: "36", max: "600" },
+    { name: "dpi", label: "OCR resolution (36–600 DPI)", type: "number", value: "150", min: "36", max: "600" },
+    { name: "language", label: "OCR language code", value: "eng", hint: "Use an installed Tesseract language, such as eng." },
     { name: "widescreen", label: "Widescreen slides", type: "checkbox", checked: true },
   ]},
   { id: "pdf-to-word", title: "PDF to Word", desc: "Extract PDF text into a Word document.", category: "Convert", icon: "▣", fields: [

@@ -26,6 +26,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 # Office formats
 import docx
 import pptx
+from pptx.dml.color import RGBColor
+from pptx.enum.text import MSO_ANCHOR
 from pptx.util import Inches, Pt
 
 
@@ -533,50 +535,139 @@ def watermark_pdf(input_path, output_path, text="CONFIDENTIAL",
 # 8. PDF TO PPT
 # ==========================================
 
-def pdf_to_ppt(input_path, output_path, dpi=150, widescreen=True):
+def _ensure_tesseract_on_path():
+    """Make a standard Windows Tesseract installation discoverable by PyMuPDF."""
+    executable = shutil.which("tesseract")
+    if executable:
+        return executable
+
+    if sys.platform == "win32":
+        candidates = [
+            os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"), "Tesseract-OCR", "tesseract.exe"),
+            os.path.join(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"), "Tesseract-OCR", "tesseract.exe"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Tesseract-OCR", "tesseract.exe"),
+        ]
+        executable = next((path for path in candidates if os.path.isfile(path)), None)
+        if executable:
+            directory = os.path.dirname(executable)
+            os.environ["PATH"] = directory + os.pathsep + os.environ.get("PATH", "")
+            return executable
+    return None
+
+
+def pdf_to_ppt(input_path, output_path, dpi=150, widescreen=True, language="eng"):
     """
-    Convert each PDF page into a high-resolution slide in a PowerPoint presentation.
+    Convert PDF text into editable PowerPoint text boxes, using OCR for scanned pages.
     """
     dpi = int(dpi)
     if not 36 <= dpi <= 600:
         raise ValueError("Resolution must be between 36 and 600 DPI.")
+    language = str(language or "").strip()
+    if not language:
+        raise ValueError("Enter a Tesseract language code, such as 'eng'.")
+
     doc = pymupdf.open(input_path)
     prs = pptx.Presentation()
-    
+
     if widescreen:
         prs.slide_width = Inches(13.333)
         prs.slide_height = Inches(7.5)
     else:
         prs.slide_width = Inches(10)
         prs.slide_height = Inches(7.5)
-        
+
     slide_w = prs.slide_width
     slide_h = prs.slide_height
     blank_layout = prs.slide_layouts[6]
-    
-    for page in doc:
-        pix = page.get_pixmap(dpi=dpi)
-        img_bytes = pix.tobytes("png")
-        slide = prs.slides.add_slide(blank_layout)
-        
-        # Calculate aspect ratio to fit slide
-        pw, ph = pix.width, pix.height
-        scale = min(slide_w / Inches(pw / dpi), slide_h / Inches(ph / dpi))
-        target_w = Inches(pw / dpi) * scale
-        target_h = Inches(ph / dpi) * scale
-        left = (slide_w - target_w) / 2
-        top = (slide_h - target_h) / 2
-        
-        stream = io.BytesIO(img_bytes)
-        slide.shapes.add_picture(stream, left, top, width=target_w, height=target_h)
-        
-    doc.close()
+    text_box_count = 0
+    ocr_pages = 0
+
+    try:
+        for page in doc:
+            source_text = page.get_text("text").strip()
+            if page.get_images(full=True) or not source_text:
+                if not _ensure_tesseract_on_path():
+                    raise RuntimeError(
+                        "This PDF needs OCR to extract scanned text. Install Tesseract OCR "
+                        "and the selected language data, then try again."
+                    )
+                tessdata = _find_tessdata_dir(language)
+                if not tessdata:
+                    raise RuntimeError(
+                        f"Tesseract language data for '{language}' is not installed."
+                    )
+                ocr_pages += 1
+                textpage = page.get_textpage_ocr(
+                    language=language,
+                    dpi=dpi,
+                    full=not bool(source_text),
+                    tessdata=tessdata,
+                )
+                page_dict = page.get_text("dict", textpage=textpage)
+            else:
+                page_dict = page.get_text("dict")
+
+            slide = prs.slides.add_slide(blank_layout)
+            page_rect = page.rect
+            fit = min(
+                slide_w / (page_rect.width * 12700),
+                slide_h / (page_rect.height * 12700),
+            )
+            page_w = page_rect.width * fit * 12700
+            page_h = page_rect.height * fit * 12700
+            offset_x = (slide_w - page_w) / 2
+            offset_y = (slide_h - page_h) / 2
+
+            for block in page_dict["blocks"]:
+                if block.get("type") != 0:
+                    continue
+                for line in block.get("lines", []):
+                    for span in line.get("spans", []):
+                        text = span.get("text", "")
+                        if not text.strip():
+                            continue
+                        x0, y0, x1, y1 = span["bbox"]
+                        left = offset_x + x0 * fit * 12700
+                        top = offset_y + y0 * fit * 12700
+                        width = max((x1 - x0) * fit * 12700, Inches(0.08))
+                        height = max((y1 - y0) * fit * 12700, Inches(0.08))
+                        shape = slide.shapes.add_textbox(left, top, width, height)
+                        frame = shape.text_frame
+                        frame.clear()
+                        frame.word_wrap = False
+                        frame.margin_left = 0
+                        frame.margin_right = 0
+                        frame.margin_top = 0
+                        frame.margin_bottom = 0
+                        frame.vertical_anchor = MSO_ANCHOR.TOP
+                        paragraph = frame.paragraphs[0]
+                        paragraph.space_before = Pt(0)
+                        paragraph.space_after = Pt(0)
+                        run = paragraph.add_run()
+                        run.text = text
+                        text_box_count += 1
+                        font = run.font
+                        font.size = Pt(max(1, span.get("size", 10) * fit))
+                        flags = span.get("flags", 0)
+                        font.bold = bool(flags & 16)
+                        font.italic = bool(flags & 2)
+                        color = span.get("color", 0)
+                        font.color.rgb = RGBColor(
+                            (color >> 16) & 0xFF,
+                            (color >> 8) & 0xFF,
+                            color & 0xFF,
+                        )
+    finally:
+        doc.close()
+
     prs.save(output_path)
-    
+
     return {
         "success": True,
         "output_path": output_path,
-        "slides_count": len(prs.slides)
+        "slides_count": len(prs.slides),
+        "text_boxes": text_box_count,
+        "ocr_pages": ocr_pages,
     }
 
 

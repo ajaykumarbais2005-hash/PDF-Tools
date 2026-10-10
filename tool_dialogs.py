@@ -916,7 +916,7 @@ class WatermarkPDFDialog(BaseToolDialog):
 
 class PDFToPPTDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF to PPT", "Convert PDF document pages into high-resolution PowerPoint slides.", width=620, height=560)
+        super().__init__(parent, "PDF to PPT", "Create editable PowerPoint text from PDF pages. Scanned pages are read using English OCR; the original page layout is approximated.", width=620, height=560)
         self.action_btn.config(text="Convert to PPTX")
 
         self.file_entry, self.file_info = self.create_file_selector("Select PDF to Convert")
@@ -932,7 +932,7 @@ class PDFToPPTDialog(BaseToolDialog):
 
         row2 = tk.Frame(c2, bg=WHITE)
         row2.pack(fill="x", padx=16, pady=(0, 10))
-        tk.Label(row2, text="Render Quality:", font=("Arial", 10), fg=DARK, bg=WHITE).pack(side="left")
+        tk.Label(row2, text="OCR Resolution:", font=("Arial", 10), fg=DARK, bg=WHITE).pack(side="left")
         self.dpi_var = tk.IntVar(value=150)
         tk.Radiobutton(row2, text="Standard (150 DPI)", variable=self.dpi_var, value=150, bg=WHITE).pack(side="left", padx=8)
         tk.Radiobutton(row2, text="High Quality (200 DPI)", variable=self.dpi_var, value=200, bg=WHITE).pack(side="left")

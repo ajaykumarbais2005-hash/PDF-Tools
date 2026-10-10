@@ -19,10 +19,12 @@ Install the Python dependencies from the project folder:
 python -m pip install -r requirements.txt
 ```
 
-This project does not install software automatically. Scanned-page OCR requires
-Tesseract OCR and the selected language data (English is `eng`). Office
-conversions use a built-in `.docx`/`.pptx` fallback; LibreOffice is optional for
-more faithful rendering and is required for legacy `.doc` and `.ppt` files.
+PDF-to-PowerPoint creates editable text boxes and uses OCR for scanned pages.
+Scanned-page OCR requires Tesseract OCR and the selected language data (English
+is `eng`). Text positioning is approximate and original graphics are not
+included in the editable slides. Office conversions use a built-in
+`.docx`/`.pptx` fallback; LibreOffice is optional for more faithful rendering
+and is required for legacy `.doc` and `.ppt` files.
 
 On Windows, the optional components can be installed separately with:
 

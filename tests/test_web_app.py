@@ -6,8 +6,10 @@ from pathlib import Path
 
 import docx
 import pptx
+from PIL import Image, ImageDraw, ImageFont
 from reportlab.pdfgen import canvas
 
+import backend
 import auth_store
 from web_app import create_app
 
@@ -233,7 +235,16 @@ class WebsiteFlowTests(unittest.TestCase):
         download_result(payload, ".pdf")
 
         payload = run_tool("pdf-to-ppt", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
-        download_result(payload, ".pptx")
+        ppt_bytes = download_result(payload, ".pptx")
+        self.assertEqual(payload["result"]["ocr_pages"], 0)
+        converted_ppt = pptx.Presentation(io.BytesIO(ppt_bytes))
+        converted_text = "\n".join(
+            shape.text
+            for slide in converted_ppt.slides
+            for shape in slide.shapes
+            if shape.has_text_frame
+        )
+        self.assertIn("PDF Tools test page 1", converted_text)
         invalid_dpi = self.client.post(
             "/api/tools/pdf-to-ppt",
             headers={"X-CSRF-Token": csrf},
@@ -292,6 +303,42 @@ class WebsiteFlowTests(unittest.TestCase):
                            {"file": (io.BytesIO(pdf_bytes), "source.pdf")})
         self.assertEqual(payload["result"]["page_number"], 2)
         self.assertTrue(payload["result"]["image"].startswith("data:image/png;base64,"))
+
+    def test_pdf_to_ppt_uses_ocr_for_scanned_text(self):
+        if not backend._ensure_tesseract_on_path():
+            self.skipTest("Tesseract OCR is not installed.")
+        if not backend._find_tessdata_dir("eng"):
+            self.skipTest("Tesseract English language data is not installed.")
+        self.create_admin()
+
+        image = Image.new("RGB", (1600, 400), "white")
+        draw = ImageDraw.Draw(image)
+        draw.text((80, 120), "Editable scanned text", fill="black",
+                  font=ImageFont.truetype(r"C:\Windows\Fonts\arial.ttf", 100))
+        scanned_pdf = io.BytesIO()
+        pdf_canvas = canvas.Canvas(scanned_pdf, pagesize=(612, 792))
+        pdf_canvas.drawInlineImage(image, 36, 320, width=540, height=135)
+        pdf_canvas.save()
+
+        payload = self.client.post(
+            "/api/tools/pdf-to-ppt",
+            headers={"X-CSRF-Token": self.csrf()},
+            data={"file": (io.BytesIO(scanned_pdf.getvalue()), "scanned.pdf")},
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(payload.status_code, 200, payload.get_data(as_text=True))
+        self.assertEqual(payload.json["result"]["ocr_pages"], 1)
+        download = self.client.get(payload.json["download_url"])
+        converted_bytes = download.get_data()
+        download.close()
+        converted_ppt = pptx.Presentation(io.BytesIO(converted_bytes))
+        converted_text = "\n".join(
+            shape.text
+            for slide in converted_ppt.slides
+            for shape in slide.shapes
+            if shape.has_text_frame
+        )
+        self.assertIn("editable scanned text", " ".join(converted_text.casefold().split()))
 
 
 if __name__ == "__main__":
