@@ -511,11 +511,11 @@ def watermark_pdf(input_path, output_path, text="CONFIDENTIAL",
                 wm_buf.seek(0)
                 wm_page = pypdf.PdfReader(wm_buf).pages[0]
                 if underlay:
-                    wm_page.merge_page(page)
                     writer.add_page(wm_page)
+                    writer.pages[-1].merge_page(page)
                 else:
-                    page.merge_page(wm_page)
                     writer.add_page(page)
+                    writer.pages[-1].merge_page(wm_page)
             with open(temp_path, "wb") as output_file:
                 writer.write(output_file)
         _finish_output_path(temp_path, output_path)
