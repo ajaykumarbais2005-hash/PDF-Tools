@@ -13,11 +13,15 @@ OCR and Office-conversion support.
 - The Python packages listed in `requirements.txt`
 - Windows for the bundled app icon behavior and File Explorer shortcuts
 
-Install the Python dependencies from the project folder:
+Install the pinned Python dependencies from the project folder:
 
 ```powershell
 python -m pip install -r requirements.txt
 ```
+
+`requirements.txt` pins the application and runtime dependency versions used
+for validation. Update those pins together and run the test suite when upgrading
+dependencies.
 
 PDF-to-PowerPoint creates editable text boxes and uses OCR for scanned pages.
 Scanned-page OCR requires Tesseract OCR and the selected language data (English
