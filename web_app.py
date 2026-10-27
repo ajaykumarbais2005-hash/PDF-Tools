@@ -129,7 +129,9 @@ def create_app(account_store=None, data_directory=None):
         @signed_in
         def wrapped(*args, **kwargs):
             if current_user().get("role") != "admin":
-                return jsonify(error="Administrator access is required."), 403
+                if request.path.startswith("/api/"):
+                    return jsonify(error="Administrator access is required."), 403
+                abort(403, "Administrator access is required.")
             return view(*args, **kwargs)
         return wrapped
 
