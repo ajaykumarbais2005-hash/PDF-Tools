@@ -2,8 +2,8 @@
   color-scheme: light;
   --ink: #202a36;
   --muted: #66717f;
-  --primary: #3e5b78;
-  --primary-dark: #304960;
+  --primary: #4f5fe8;
+  --primary-dark: #2f3ccb;
   --line: #e1e5e9;
   --surface: #fff;
   --canvas: #f5f5f2;
@@ -24,7 +24,7 @@ button:disabled { cursor: wait; opacity: .65; }
 
 .auth-page { min-height: 100vh; background: #fff; }
 .auth-layout { min-height: 100vh; display: grid; grid-template-columns: minmax(360px, .88fr) 1.12fr; }
-.auth-brand { padding: 38px clamp(32px, 6vw, 92px); color: white; display: flex; flex-direction: column; justify-content: space-between; background: radial-gradient(ellipse at 73% 31%, #536ae9 0, transparent 46%), linear-gradient(145deg, #303b86 0%, #252d69 54%, #202857 100%); }
+.auth-brand { padding: 38px clamp(32px, 6vw, 92px); color: white; display: flex; flex-direction: column; justify-content: space-between; background: radial-gradient(ellipse at 73% 31%, #7280f4 0, transparent 46%), linear-gradient(145deg, #4f5fe8 0%, #3b49d1 54%, #2f3ccb 100%); }
 .brand-lockup { display: inline-flex; gap: 11px; align-items: center; font-family: "Segoe UI", Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -.4px; }
 .brand-lockup strong { font-weight: 500; opacity: .72; }
 .brand-icon { width: 36px; height: 36px; object-fit: contain; border-radius: 9px; }

@@ -10,7 +10,7 @@ import auth_store
 import tool_dialogs
 
 
-APP_NAME = "PDF TOOLS"
+APP_NAME = "PDF Tools"
 
 BG = "#F3F6FF"
 WHITE = "#FFFFFF"
@@ -118,7 +118,7 @@ class MITS_PDF_UTILITY:
         self.brand_images["login"] = self.load_brand_icon(34)
         if self.brand_images["login"]:
             tk.Label(top, image=self.brand_images["login"], bg=WHITE).pack(side="left", padx=(18, 8))
-        tk.Label(top, text="PDF TOOLS", font=("Arial", 16, "bold"), fg=DARK, bg=WHITE).pack(side="left")
+        tk.Label(top, text="PDF Tools", font=("Arial", 16, "bold"), fg=DARK, bg=WHITE).pack(side="left")
         for label, command in (
             ("—", self.root.iconify),
             ("□", self.toggle_maximize),
@@ -136,7 +136,7 @@ class MITS_PDF_UTILITY:
         left.place(relx=0, rely=0, relwidth=0.46, relheight=1)
         tk.Label(left, text="PDF", font=("Arial", 58, "bold"), fg=WHITE, bg=PRIMARY).pack(pady=(180, 0))
         tk.Label(left, text="TOOLS", font=("Arial", 42, "bold"), fg=WHITE, bg=PRIMARY).pack()
-        tk.Label(left, text="Professional PDF tools for your college workflow", font=("Arial", 16), fg="#E8EBFF", bg=PRIMARY).pack(pady=12)
+        tk.Label(left, text="Merge, convert, and organize documents on this computer.", font=("Arial", 16), fg="#E8EBFF", bg=PRIMARY, wraplength=480, justify="center").pack(pady=12)
         tk.Label(left, text="Authorized access  ·  Private local accounts", font=("Arial", 12), fg="#E8EBFF", bg=PRIMARY).pack(pady=4)
 
         right = tk.Frame(body, bg=WHITE)
@@ -530,7 +530,7 @@ class MITS_PDF_UTILITY:
 
         tk.Label(
             brand_wrap,
-            text="PDF TOOLS",
+            text="PDF Tools",
             font=("Arial", 21, "bold"),
             fg=PRIMARY,
             bg=WHITE
@@ -551,7 +551,7 @@ class MITS_PDF_UTILITY:
 
         tk.Label(
             header,
-            text="PDF Management Suite",
+            text="Merge, convert, and organize documents",
             font=("Arial", 11),
             fg=SECONDARY,
             bg=WHITE
@@ -782,6 +782,12 @@ class MITS_PDF_UTILITY:
                 canvas_window,
                 width=event.width
             )
+            columns = max(1, min(6, event.width // 190))
+            if columns != self._tool_columns:
+                self._tool_columns = columns
+                if hasattr(self, "tools"):
+                    search = self.search_entry.get().strip()
+                    self.draw_tools("" if search == "Search tools..." else search)
 
         canvas.bind(
             "<Configure>",
@@ -789,6 +795,7 @@ class MITS_PDF_UTILITY:
         )
 
         self.tools_canvas = canvas
+        self._tool_columns = 6
         self.root.bind_all("<MouseWheel>", self.scroll_tools)
 
         self.icon_sheet = self.load_icons()
@@ -797,52 +804,52 @@ class MITS_PDF_UTILITY:
 
             (
                 "Create PDF",
-                "Create a new PDF document"
+                "Turn your text into a PDF document"
             ),
 
             (
-                "PDF Merger",
-                "Combine multiple PDF files"
+                "Merge PDFs",
+                "Combine documents in the order you choose"
             ),
 
             (
-                "PDF Split",
-                "Split a PDF into multiple files"
+                "Split PDF",
+                "Separate pages or extract page ranges"
             ),
 
             (
-                "PDF Lock",
-                "Protect PDF with password"
+                "Protect PDF",
+                "Encrypt a PDF with a password"
             ),
 
             (
-                "PDF Unlock",
-                "Remove PDF password"
+                "Unlock PDF",
+                "Remove protection with the current password"
             ),
 
             (
-                "PDF Compression",
-                "Reduce PDF file size"
+                "Compress PDF",
+                "Optimize PDF structure and image size"
             ),
 
             (
                 "Watermark PDF",
-                "Add or remove PDF watermark"
+                "Add a text or image watermark"
             ),
 
             (
-                "PDF to PPT",
-                "Convert PDF to PowerPoint"
+                "PDF to PowerPoint",
+                "Create editable slides from PDF text"
             ),
 
             (
                 "PDF to Word",
-                "Convert PDF to Word"
+                "Extract PDF text into a Word document"
             ),
 
             (
-                "PDF to Image",
-                "Convert PDF pages to images"
+                "PDF to Images",
+                "Export pages as PNG, JPEG, or WebP"
             ),
 
             (
@@ -852,11 +859,11 @@ class MITS_PDF_UTILITY:
 
             (
                 "Extract Text",
-                "Extract text from PDF"
+                "Get text and page-level word counts"
             ),
 
             (
-                "PPT to PDF",
+                "PowerPoint to PDF",
                 "Convert PowerPoint to PDF"
             ),
 
@@ -866,28 +873,28 @@ class MITS_PDF_UTILITY:
             ),
 
             (
-                "Rotate PDF",
-                "Rotate PDF pages"
+                "Rotate Pages",
+                "Rotate all pages or a selected range"
             ),
 
             (
                 "Delete Pages",
-                "Remove selected PDF pages"
+                "Remove selected pages and keep the rest"
             ),
 
             (
                 "Reorder Pages",
-                "Change the order of PDF pages"
+                "Choose a new sequence for your document"
             ),
 
             (
                 "PDF Preview",
-                "Preview PDF before processing"
+                "Render a page at your chosen zoom level"
             ),
 
             (
                 "PDF Information",
-                "View PDF file information"
+                "View document properties and metadata"
             )
         ]
 
@@ -935,7 +942,13 @@ class MITS_PDF_UTILITY:
                     item
                 )
 
-        columns = 6
+        columns = max(1, self._tool_columns)
+        for col in range(6):
+            self.tools_frame.grid_columnconfigure(
+                col,
+                weight=0,
+                uniform=""
+            )
 
         for index, item in enumerate(filtered):
 
@@ -1096,11 +1109,11 @@ class MITS_PDF_UTILITY:
 
     def pdf_merger(self):
 
-        tool_dialogs.open_tool_dialog(self.root, "PDF Merger")
+        tool_dialogs.open_tool_dialog(self.root, "Merge PDFs")
 
     def pdf_split(self):
 
-        tool_dialogs.open_tool_dialog(self.root, "PDF Split")
+        tool_dialogs.open_tool_dialog(self.root, "Split PDF")
 
     def manage_users(self):
         if not self.current_user or self.current_user["role"] != "admin":

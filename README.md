@@ -3,9 +3,14 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)](https://www.microsoft.com/windows)
 
-A desktop and local web application for merging, splitting, compressing, converting,
-and organizing PDF documents. Files are processed on your computer, with optional
-OCR and Office-conversion support.
+PDF Tools is a Windows desktop application with an optional local browser
+interface. It can merge and split PDFs, manage pages, extract text, convert
+documents, and process scanned pages with optional OCR. Files are processed on
+your computer.
+
+The desktop interface uses Tkinter. The browser interface runs locally with
+Flask and listens on `127.0.0.1`; it is not intended to be a public or
+multi-device service.
 
 ## Requirements
 
@@ -68,6 +73,19 @@ results expire after two hours and are removed on subsequent website activity;
 download a result before it expires. OCR of scanned pages still requires Tesseract OCR and language data;
 Office conversions may use the optional LibreOffice installation described
 above.
+
+## Troubleshooting
+
+- **OCR is unavailable:** Install Tesseract and the language data for the
+  selected language. English uses the `eng` language code.
+- **Office conversion looks different from the source:** Install LibreOffice
+  for more faithful rendering. Legacy `.doc` and `.ppt` files require it.
+- **A web result is no longer available:** Download results before they expire
+  after two hours. Temporary files are cleaned up during later website
+  activity.
+- **The sign-in screen asks you to create an administrator:** Accounts are
+  stored per Windows profile. The first launch under a Windows profile creates
+  its local administrator account.
 
 ## Authorized accounts
 

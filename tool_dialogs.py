@@ -37,7 +37,7 @@ class BaseToolDialog:
         self.subtitle_text = subtitle
         
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title(f"{title} - PDF TOOLS")
+        self.dialog.title(f"{title} - PDF Tools")
         self.dialog.geometry(f"{width}x{height}")
         self.dialog.minsize(560, 480)
         self.dialog.configure(bg=BG)
@@ -483,7 +483,7 @@ class CreatePDFDialog(BaseToolDialog):
 
 class PDFMergerDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF Merger", "Combine multiple PDF documents into a single organized file.", width=660, height=620)
+        super().__init__(parent, "Merge PDFs", "Combine multiple PDF documents into one file.", width=660, height=620)
         self.action_btn.config(text="Merge PDFs")
         self.files_list = []
 
@@ -583,7 +583,7 @@ class PDFMergerDialog(BaseToolDialog):
 
 class PDFSplitDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF Split", "Split a PDF document into individual pages or custom sections.", width=640, height=620)
+        super().__init__(parent, "Split PDF", "Split a PDF into individual pages or selected page ranges.", width=640, height=620)
         self.action_btn.config(text="Split PDF")
 
         self.file_entry, self.file_info = self.create_file_selector("Select PDF to Split")
@@ -641,7 +641,7 @@ class PDFSplitDialog(BaseToolDialog):
 
 class PDFLockDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF Lock", "Protect your PDF document with secure AES encryption.", width=620, height=580)
+        super().__init__(parent, "Protect PDF", "Encrypt a PDF with a password.", width=620, height=580)
         self.action_btn.config(text="Lock & Encrypt")
 
         self.file_entry, self.file_info = self.create_file_selector("Select PDF to Protect")
@@ -702,7 +702,7 @@ class PDFLockDialog(BaseToolDialog):
 
 class PDFUnlockDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF Unlock", "Remove password protection from an encrypted PDF document.", width=620, height=540)
+        super().__init__(parent, "Unlock PDF", "Remove password protection using the current password.", width=620, height=540)
         self.action_btn.config(text="Unlock PDF")
 
         self.file_entry, self.file_info = self.create_file_selector("Select Protected PDF")
@@ -749,7 +749,7 @@ class PDFUnlockDialog(BaseToolDialog):
 
 class PDFCompressionDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF Compression", "Reduce PDF file size with smart stream and image optimization.", width=620, height=580)
+        super().__init__(parent, "Compress PDF", "Reduce PDF file size by optimizing its contents.", width=620, height=580)
         self.action_btn.config(text="Compress PDF")
 
         self.file_entry, self.file_info = self.create_file_selector("Select PDF to Compress")
@@ -916,7 +916,7 @@ class WatermarkPDFDialog(BaseToolDialog):
 
 class PDFToPPTDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF to PPT", "Create editable PowerPoint text from PDF pages. Scanned pages are read using English OCR; the original page layout is approximated.", width=620, height=560)
+        super().__init__(parent, "PDF to PowerPoint", "Create editable text boxes from PDF pages. Scanned pages require OCR; layout and graphics are not fully preserved.", width=620, height=560)
         self.action_btn.config(text="Convert to PPTX")
 
         self.file_entry, self.file_info = self.create_file_selector("Select PDF to Convert")
@@ -1001,7 +1001,7 @@ class PDFToWordDialog(BaseToolDialog):
 
 class PDFToImageDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF to Image", "Export high-resolution images from PDF pages.", width=620, height=580)
+        super().__init__(parent, "PDF to Images", "Export PDF pages as image files.", width=620, height=580)
         self.action_btn.config(text="Convert to Images")
 
         self.file_entry, self.file_info = self.create_file_selector("Select PDF to Export")
@@ -1224,7 +1224,7 @@ class ExtractTextDialog(BaseToolDialog):
 
 class PPTToPDFDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PPT to PDF", "Convert PowerPoint presentations (.pptx) directly to PDF format.", width=620, height=520)
+        super().__init__(parent, "PowerPoint to PDF", "Convert a PowerPoint presentation to PDF.", width=620, height=520)
         self.action_btn.config(text="Convert to PDF")
 
         self.file_entry, self.file_info = self.create_file_selector(
@@ -1296,7 +1296,7 @@ class WordToPDFDialog(BaseToolDialog):
 
 class RotatePDFDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "Rotate PDF", "Permanently rotate pages in your PDF document.", width=620, height=580)
+        super().__init__(parent, "Rotate Pages", "Rotate all pages or a selected range in a PDF.", width=620, height=580)
         self.action_btn.config(text="Rotate & Save")
 
         self.file_entry, self.file_info = self.create_file_selector("Select PDF to Rotate")
@@ -1465,7 +1465,7 @@ class PDFPreviewDialog:
         self.current_photo = None
 
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("PDF Preview - PDF TOOLS")
+        self.dialog.title("PDF Preview - PDF Tools")
         self.dialog.geometry("960x780")
         self.dialog.minsize(700, 500)
         self.dialog.configure(bg=BG)
@@ -1676,19 +1676,28 @@ class PDFInformationDialog(BaseToolDialog):
 TOOL_DIALOG_MAP = {
     "Create PDF": CreatePDFDialog,
     "PDF Merger": PDFMergerDialog,
+    "Merge PDFs": PDFMergerDialog,
     "PDF Split": PDFSplitDialog,
+    "Split PDF": PDFSplitDialog,
     "PDF Lock": PDFLockDialog,
+    "Protect PDF": PDFLockDialog,
     "PDF Unlock": PDFUnlockDialog,
+    "Unlock PDF": PDFUnlockDialog,
     "PDF Compression": PDFCompressionDialog,
+    "Compress PDF": PDFCompressionDialog,
     "Watermark PDF": WatermarkPDFDialog,
     "PDF to PPT": PDFToPPTDialog,
+    "PDF to PowerPoint": PDFToPPTDialog,
     "PDF to Word": PDFToWordDialog,
     "PDF to Image": PDFToImageDialog,
+    "PDF to Images": PDFToImageDialog,
     "OCR": OCRDialog,
     "Extract Text": ExtractTextDialog,
     "PPT to PDF": PPTToPDFDialog,
+    "PowerPoint to PDF": PPTToPDFDialog,
     "Word to PDF": WordToPDFDialog,
     "Rotate PDF": RotatePDFDialog,
+    "Rotate Pages": RotatePDFDialog,
     "Delete Pages": DeletePagesDialog,
     "Reorder Pages": ReorderPagesDialog,
     "PDF Preview": PDFPreviewDialog,
