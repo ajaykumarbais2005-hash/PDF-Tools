@@ -6,12 +6,13 @@ from tkinter import messagebox, simpledialog, ttk
 import auth_store
 
 
-BG = "#F5F7FB"
+BG = "#F5F7FF"
 WHITE = "#FFFFFF"
-PRIMARY = "#4F5FE8"
-DARK = "#101B42"
-SECONDARY = "#667085"
-BORDER = "#DDE3EE"
+PRIMARY = "#6D4CF5"
+PRIMARY_DARK = "#5036C9"
+DARK = "#211B3A"
+SECONDARY = "#706C85"
+BORDER = "#E5E1F0"
 RED = "#EF233C"
 
 
@@ -81,7 +82,7 @@ class AccountManagerDialog:
             font=("Arial", 10, "bold" if primary else "normal"),
             fg=WHITE if primary else DARK,
             bg=PRIMARY if primary else WHITE,
-            activebackground="#394AD5" if primary else "#F3F4F6",
+            activebackground=PRIMARY_DARK if primary else "#F3F4F6",
             relief="flat",
             bd=0,
             cursor="hand2",

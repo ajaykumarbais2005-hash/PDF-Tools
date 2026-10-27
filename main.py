@@ -12,17 +12,21 @@ import tool_dialogs
 
 APP_NAME = "PDF Tools"
 
-BG = "#F3F6FF"
+BG = "#F5F7FF"
 WHITE = "#FFFFFF"
-PRIMARY = "#4F5FE8"
-PRIMARY_DARK = "#2F3CCB"
-DARK = "#101B42"
-TEXT = "#111827"
-SECONDARY = "#667085"
-BORDER = "#DDE3EE"
+PRIMARY = "#6D4CF5"
+PRIMARY_DARK = "#5036C9"
+DARK = "#211B3A"
+TEXT = "#29263D"
+SECONDARY = "#706C85"
+BORDER = "#E5E1F0"
 RED = "#EF233C"
-SURFACE = "#F8FAFF"
-SHADOW = "#E2E8F0"
+SURFACE = "#FBFAFF"
+SHADOW = "#E6E2F0"
+TOOL_ACCENTS = (
+    "#F06A8B", "#F2A640", "#39B7A2", "#6285F5",
+    "#A16AE8", "#EC7180", "#40A9D6", "#7ABF63",
+)
 SESSION_IDLE_SECONDS = 15 * 60
 
 
@@ -197,7 +201,7 @@ class MITS_PDF_UTILITY:
                 "Create Account" if registration_mode else "Sign In"
             ),
             font=("Arial", 12, "bold"), fg=WHITE, bg=PRIMARY,
-            activebackground="#394AD5", activeforeground=WHITE,
+            activebackground=PRIMARY_DARK, activeforeground=WHITE,
             relief="flat", bd=0, cursor="hand2",
             command=self.authenticate_login,
         ).pack(fill="x", padx=48, ipady=11, pady=(4, 0))
@@ -954,6 +958,7 @@ class MITS_PDF_UTILITY:
 
             name = item[0]
             description = item[1]
+            accent = TOOL_ACCENTS[self.tools.index(item) % len(TOOL_ACCENTS)]
 
             row = index // columns
             col = index % columns
@@ -973,6 +978,8 @@ class MITS_PDF_UTILITY:
                 pady=9,
                 sticky="nsew"
             )
+
+            tk.Frame(card, bg=accent, height=4).pack(fill="x")
 
             self.tools_frame.grid_columnconfigure(
                 col,
@@ -1006,8 +1013,8 @@ class MITS_PDF_UTILITY:
                     card,
                     text="PDF",
                     font=("Arial", 20, "bold"),
-                    fg="#E11D48",
-                    bg="#F8FAFC"
+                    fg=accent,
+                    bg=WHITE
                 )
 
                 icon_label.pack(
@@ -1041,11 +1048,11 @@ class MITS_PDF_UTILITY:
             )
 
             # Polished hover feedback on card
-            def make_hover(c_frame, nl, dl):
+            def make_hover(c_frame, nl, dl, card_accent):
                 def on_enter(e):
-                    c_frame.config(highlightbackground=PRIMARY, bg="#F9FAFF")
-                    nl.config(bg="#F9FAFF")
-                    dl.config(bg="#F9FAFF")
+                    c_frame.config(highlightbackground=card_accent, bg="#FBFAFF")
+                    nl.config(bg="#FBFAFF")
+                    dl.config(bg="#FBFAFF")
 
                 def on_leave(e):
                     c_frame.config(highlightbackground=BORDER, bg=WHITE)
@@ -1055,7 +1062,7 @@ class MITS_PDF_UTILITY:
                 c_frame.bind("<Enter>", on_enter)
                 c_frame.bind("<Leave>", on_leave)
 
-            make_hover(card, name_label, desc_label)
+            make_hover(card, name_label, desc_label, accent)
 
             for widget in [
                 card,

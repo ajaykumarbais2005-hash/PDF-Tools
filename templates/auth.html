@@ -15,26 +15,26 @@
         <span>PDF <strong>Tools</strong></span>
       </a>
       <div class="brand-copy">
-        <span class="eyebrow">PDF tasks, kept on this computer</span>
+        <span class="eyebrow">PDF tools for your desktop</span>
         <h1>Tools for working<br><em>with PDFs.</em></h1>
-        <p>Merge, split, convert, and inspect documents with the desktop app or local browser interface.</p>
+        <p>Merge, split, convert, and inspect documents from the desktop app or your browser.</p>
       </div>
-      <div class="brand-foot"><span class="status-dot"></span> Private, local processing on this computer</div>
+      <div class="brand-foot"><span class="status-dot"></span> Files are processed on your computer</div>
     </section>
     <section class="auth-side">
       <div class="auth-card">
         {% if mode == "setup" %}
           <span class="eyebrow">One-time setup</span>
           <h2>Create your administrator</h2>
-          <p class="muted">Set up the first account. You can invite approved users after signing in.</p>
+          <p class="muted">Create the administrator account for this installation. You can invite users after signing in.</p>
         {% elif mode == "register" %}
           <span class="eyebrow">Authorized access</span>
           <h2>Create your account</h2>
-          <p class="muted">Ask an administrator for a one-time invitation code.</p>
+          <p class="muted">Enter the invitation code provided by your administrator.</p>
         {% else %}
           <span class="eyebrow">Welcome back</span>
-          <h2>Sign in to your workspace</h2>
-          <p class="muted">Your documents stay on this computer while they are being processed.</p>
+          <h2>Sign in to PDF Tools</h2>
+          <p class="muted">Enter your account details to continue to your workspace.</p>
         {% endif %}
 
         {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
@@ -63,7 +63,7 @@
             <a href="{{ url_for('login') }}">Return to sign in</a>
           {% endif %}
         </div>
-        <p class="auth-note"><span aria-hidden="true">⌑</span> Accounts and documents are managed on this computer.</p>
+        <p class="auth-note"><span aria-hidden="true">⌑</span> Your account and files stay on this computer.</p>
       </div>
     </section>
   </main>
