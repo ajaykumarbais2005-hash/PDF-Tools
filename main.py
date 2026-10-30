@@ -624,7 +624,8 @@ class MITS_PDF_UTILITY:
         )
 
         title_row.pack(
-            fill="x"
+            fill="x",
+            pady=(8, 0)
         )
 
         title_area = tk.Frame(
@@ -639,7 +640,7 @@ class MITS_PDF_UTILITY:
         tk.Label(
             title_area,
             text="PDF Tools",
-            font=("Arial", 28, "bold"),
+            font=("Arial", 32, "bold"),
             fg=DARK,
             bg=BG
         ).pack(

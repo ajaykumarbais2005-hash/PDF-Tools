@@ -26,12 +26,14 @@ button:disabled { cursor: wait; opacity: .65; }
 .auth-layout { min-height: 100vh; display: grid; grid-template-columns: minmax(360px, .88fr) 1.12fr; }
 .auth-brand { padding: 38px clamp(32px, 6vw, 92px); color: white; display: flex; flex-direction: column; justify-content: space-between; background: radial-gradient(ellipse at 73% 31%, #ff82b4 0, transparent 42%), radial-gradient(ellipse at 8% 90%, #29c8c0 0, transparent 35%), linear-gradient(145deg, #7553f6 0%, #5b43dc 55%, #3d35ae 100%); }
 .brand-lockup { display: inline-flex; gap: 11px; align-items: center; font-family: "Segoe UI", Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -.4px; }
+.auth-brand .brand-lockup { gap: 15px; font-size: clamp(36px, 4.5vw, 58px); letter-spacing: -.8px; }
 .brand-lockup strong { font-weight: 500; opacity: .72; }
 .brand-icon { width: 36px; height: 36px; object-fit: contain; border-radius: 9px; }
+.auth-brand .brand-icon { width: 60px; height: 60px; }
 .brand-copy { max-width: 520px; padding: 50px 0 68px; }
 .eyebrow { display: block; color: #8390a4; font-size: 10px; line-height: 1.4; font-weight: 700; letter-spacing: 1.45px; text-transform: uppercase; }
 .auth-brand .eyebrow { color: #bdc7ff; }
-.brand-copy h1 { margin: 20px 0 16px; font-family: "Segoe UI", Arial, sans-serif; font-size: clamp(36px, 4.5vw, 58px); letter-spacing: -2.7px; line-height: 1.12; }
+.brand-copy h1 { margin: 20px 0 16px; font-family: "Segoe UI", Arial, sans-serif; font-size: clamp(34px, calc(3vw + 4px), 44px); letter-spacing: -2.7px; line-height: 1.12; }
 .brand-copy h1 em { color: #b5c0ff; font-style: normal; }
 .brand-copy p { max-width: 370px; color: #d6daf4; font-size: 15px; line-height: 1.7; }
 .brand-foot { color: #d7dcfb; font-size: 12px; display: flex; gap: 9px; align-items: center; }
@@ -230,7 +232,7 @@ textarea.field-control { min-height: 95px; resize: vertical; padding: 10px; }
   .tool-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.popular-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 740px) {
-  .auth-layout { grid-template-columns: 1fr; }.auth-brand { min-height: 190px; padding: 22px 25px; }.brand-copy { padding: 32px 0 5px; }.brand-copy h1 { font-size: 35px; }.brand-copy p, .brand-foot { display: none; }
+  .auth-layout { grid-template-columns: 1fr; }.auth-brand { min-height: 190px; padding: 22px 25px; }.brand-copy { padding: 32px 0 5px; }.brand-copy h1 { font-size: clamp(34px, calc(3vw + 4px), 44px); }.brand-copy p, .brand-foot { display: none; }
   .auth-side { padding: 42px 23px; }.auth-card h2 { font-size: 24px; }.auth-note { margin-top: 27px; }
   .sidebar { z-index: 6; transform: translateX(-100%); transition: transform .2s; box-shadow: 8px 0 30px #10182812; }.sidebar.open { transform: translateX(0); }
   .sidebar-backdrop { position: fixed; z-index: 5; inset: 0; display: block; border: 0; padding: 0; background: #10182870; opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s; }
