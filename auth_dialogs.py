@@ -126,7 +126,7 @@ class AccountManagerDialog:
 
         def add_field(label, show=None):
             tk.Label(card, text=label, font=("Arial", 10), fg=DARK, bg=WHITE).pack(anchor="w", pady=(5, 2))
-            field = tk.Entry(card, font=("Arial", 11), show=show, relief="flat", highlightbackground=BORDER, highlightthickness=1)
+            field = tk.Entry(card, font=("Arial", 11), show=show, relief="flat", highlightbackground=BORDER, highlightthickness=1) # type: ignore
             field.pack(fill="x", ipady=6)
             return field
 
