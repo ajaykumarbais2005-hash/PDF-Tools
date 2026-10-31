@@ -11,7 +11,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageTk
 
-import backend
+from backend import pdf_backend as backend
 import pymupdf
 
 # Color palette matching PDF Tools

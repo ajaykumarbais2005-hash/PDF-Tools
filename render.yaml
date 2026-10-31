@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pdf-tools-api
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: gunicorn frontend.web_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    healthCheckPath: /api/health
+    disk:
+      name: pdf-tools-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: MITS_PDF_DATA_DIR
+        value: /var/data
+      - key: MITS_PDF_SECRET_KEY
+        generateValue: true

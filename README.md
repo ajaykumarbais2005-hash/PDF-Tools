@@ -59,7 +59,7 @@ The project also includes a browser-based interface for the existing PDF tools.
 Install the requirements above, then run:
 
 ```powershell
-python web_app.py
+python -m frontend.web_app
 ```
 
 Open `http://127.0.0.1:5000` in a browser. The website listens only on this
@@ -111,6 +111,34 @@ with access to the same already-unlocked Windows profile can use its signed-in
 desktop session, so protect the Windows account and lock the PC when away.
 
 The app icon is provided as `mits_pdf_icon.png` and `mits_pdf_icon.ico`.
+
+## Deploy the browser app separately
+
+The browser app can be deployed with a static Vercel frontend and a Flask API
+on Render. The desktop app and local browser interface remain available.
+
+1. Deploy the repository to Render using the included `render.yaml` blueprint.
+   The service uses a persistent disk for accounts, session signing data, and
+   temporary processing files. The blueprint uses a paid Starter service
+   because Render's free web services do not provide persistent disks.
+2. Deploy the `frontend` directory as the Vercel project root.
+3. The Vercel rewrites target `https://pdf-tools-api.onrender.com`. If Render
+   assigns a different service URL, update the three backend destinations in
+   `frontend/vercel.json` to that URL before deploying Vercel.
+4. Open the Vercel URL. On first launch, create the administrator account.
+   Use **Manage accounts** to create invitation codes for other users.
+
+The Vercel frontend sends API requests through same-origin rewrites, so the
+backend's secure session cookie is handled by the browser without exposing
+cross-origin API access. Uploaded documents are processed on the Render
+service, not on the user's computer. They are limited to 100 MB each and
+temporary files are removed after two hours. Keep the Render persistent disk
+enabled; deleting or replacing it removes account data.
+
+Tesseract and LibreOffice are optional system packages and are not installed by
+the default Render blueprint. OCR requires Tesseract and language data;
+conversions that use LibreOffice may need a custom Render image with
+LibreOffice installed.
 
 ## Output safety
 

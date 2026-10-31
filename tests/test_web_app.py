@@ -9,9 +9,9 @@ import pptx
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.pdfgen import canvas
 
-import backend
-import auth_store
-from web_app import create_app
+from backend import auth_store
+from backend import pdf_backend as backend
+from frontend.web_app import create_app
 
 
 class WebsiteFlowTests(unittest.TestCase):
@@ -41,6 +41,36 @@ class WebsiteFlowTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
+
+    def test_api_authentication_flow(self):
+        response = self.client.get("/api/auth/status")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["needs_setup"])
+        csrf = response.json["csrf_token"]
+
+        response = self.client.post(
+            "/api/auth/setup",
+            json={"username": "api-admin", "password": "long-enough-test-password"},
+            headers={"X-CSRF-Token": csrf},
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json["user"]["role"], "admin")
+
+        response = self.client.post(
+            "/api/auth/logout",
+            headers={"X-CSRF-Token": self.client.get("/api/auth/status").json["csrf_token"]},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(self.client.get("/api/auth/status").json["user"])
+
+        csrf = self.client.get("/api/auth/status").json["csrf_token"]
+        response = self.client.post(
+            "/api/auth/login",
+            json={"username": "api-admin", "password": "long-enough-test-password"},
+            headers={"X-CSRF-Token": csrf},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["user"]["username"], "api-admin")
 
     @staticmethod
     def sample_pdf():

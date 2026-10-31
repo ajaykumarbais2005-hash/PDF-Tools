@@ -24,8 +24,8 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-import auth_store
-import backend
+from backend import auth_store
+from backend import pdf_backend as backend
 
 
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024
@@ -67,6 +67,9 @@ def create_app(account_store=None, data_directory=None):
         MAX_CONTENT_LENGTH=MAX_UPLOAD_BYTES,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=os.environ.get(
+            "SESSION_COOKIE_SECURE", "true" if os.environ.get("RENDER") else "false"
+        ).lower() in {"1", "true", "yes"},
         PERMANENT_SESSION_LIFETIME=SESSION_IDLE_SECONDS,
     )
     app.extensions["account_store"] = account_store
@@ -142,6 +145,65 @@ def create_app(account_store=None, data_directory=None):
         session["_last_activity"] = time.time()
         csrf_token()
 
+    def api_auth_error(error):
+        return jsonify(error=str(error)), 400
+
+    @app.get("/api/health")
+    def health():
+        return jsonify(status="ok")
+
+    @app.get("/api/auth/status")
+    def auth_status():
+        return jsonify(
+            needs_setup=account_store.needs_setup(),
+            user=current_user(),
+            csrf_token=csrf_token(),
+        )
+
+    @app.post("/api/auth/setup")
+    def api_setup():
+        if not account_store.needs_setup():
+            return jsonify(error="Initial administrator setup has already been completed."), 409
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error="Invalid authentication request."), 400
+        try:
+            account_store.create_initial_admin(data.get("username"), data.get("password"))
+            set_login(account_store.authenticate(data.get("username"), data.get("password")))
+            return jsonify(user=current_user()), 201
+        except (auth_store.AuthenticationError, ValueError) as error:
+            return api_auth_error(error)
+
+    @app.post("/api/auth/login")
+    def api_login():
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error="Invalid authentication request."), 400
+        try:
+            set_login(account_store.authenticate(data.get("username"), data.get("password")))
+            return jsonify(user=current_user())
+        except (auth_store.AuthenticationError, ValueError) as error:
+            return api_auth_error(error)
+
+    @app.post("/api/auth/register")
+    def api_register():
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error="Invalid authentication request."), 400
+        try:
+            account_store.register_user(
+                data.get("invitation"), data.get("username"), data.get("password")
+            )
+            set_login(account_store.authenticate(data.get("username"), data.get("password")))
+            return jsonify(user=current_user()), 201
+        except (auth_store.AuthenticationError, ValueError) as error:
+            return api_auth_error(error)
+
+    @app.post("/api/auth/logout")
+    def api_logout():
+        session.clear()
+        return jsonify(success=True)
+
     def render_auth(mode, error=None):
         return render_template(
             "auth.html",
@@ -161,7 +223,8 @@ def create_app(account_store=None, data_directory=None):
 
     @app.get("/brand-icon")
     def brand_icon():
-        return send_file(Path(__file__).resolve().parent / "mits_pdf_icon.png", mimetype="image/png")
+        icon_path = Path(__file__).resolve().parent.parent / "mits_pdf_icon.png"
+        return send_file(icon_path, mimetype="image/png")
 
     @app.route("/setup", methods=["GET", "POST"])
     def setup():

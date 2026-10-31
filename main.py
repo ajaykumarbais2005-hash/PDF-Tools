@@ -4,9 +4,8 @@ from PIL import Image, ImageTk
 import os
 import time
 
-import backend
 import auth_dialogs
-import auth_store
+from backend import auth_store
 import tool_dialogs
 
 

@@ -22,7 +22,12 @@ class AuthenticationError(ValueError):
 
 
 def default_database_path():
-    """Return a private database path inside the current Windows user's profile."""
+    """Return the account database path for the current desktop or web install."""
+    configured_directory = os.environ.get("MITS_PDF_DATA_DIR")
+    if configured_directory:
+        os.makedirs(configured_directory, exist_ok=True)
+        return os.path.join(configured_directory, "accounts.sqlite3")
+
     base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
     directory = os.path.join(base, "MITS PDF Utility")
     os.makedirs(directory, exist_ok=True)

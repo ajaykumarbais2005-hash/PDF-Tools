@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7fb">
+  <meta name="csrf-token" content="">
+  <title>PDF Tools</title>
+  <link rel="stylesheet" href="/static/site.css">
+  <script src="/static/deploy.js" defer></script>
+</head>
+<body class="app-page" data-page="workspace" data-username="" data-role="">
+  <main class="auth-layout" id="auth-screen" hidden>
+    <section class="auth-brand">
+      <a class="brand-lockup" href="/">
+        <img src="/brand-icon" alt="" class="brand-icon">
+        <span>PDF <strong>Tools</strong></span>
+      </a>
+      <div class="brand-copy">
+        <span class="eyebrow">PDF tools for your browser</span>
+        <h1>Tools for working<br><em>with PDFs.</em></h1>
+        <p>Merge, split, convert, and inspect documents from your browser.</p>
+      </div>
+      <div class="brand-foot"><span class="status-dot"></span> Files are processed by the PDF Tools server</div>
+    </section>
+    <section class="auth-side">
+      <div class="auth-card">
+        <span class="eyebrow" id="auth-eyebrow">Welcome</span>
+        <h2 id="auth-title">Sign in to PDF Tools</h2>
+        <p class="muted" id="auth-description">Enter your account details to continue to your workspace.</p>
+        <div class="alert alert-error" id="auth-error" role="alert" hidden></div>
+        <form id="auth-form" class="auth-form">
+          <div id="invitation-field" hidden>
+            <label for="invitation">Invitation code</label>
+            <input id="invitation" name="invitation" autocomplete="one-time-code">
+          </div>
+          <label for="username">Username</label>
+          <input id="username" name="username" autocomplete="username" maxlength="64" required autofocus>
+          <label for="password">Password <span class="muted">(at least 12 characters)</span></label>
+          <input id="password" name="password" type="password" autocomplete="current-password" minlength="12" required>
+          <button class="button button-primary button-wide" id="auth-submit" type="submit">Sign in <span aria-hidden="true">→</span></button>
+        </form>
+        <div class="auth-links" id="auth-links"></div>
+        <p class="auth-note"><span aria-hidden="true">⌑</span> Keep your account credentials private.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="app-shell" hidden>
+    <button class="sidebar-backdrop" id="sidebar-backdrop" type="button" aria-label="Close navigation" tabindex="-1"></button>
+    <aside class="sidebar" id="sidebar">
+      <a class="brand-lockup sidebar-brand" href="/">
+        <img src="/brand-icon" alt="" class="brand-icon">
+        <span>PDF <strong>Tools</strong></span>
+      </a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="side-nav" aria-label="Main navigation">
+        <a class="nav-item active" href="#tools"><span class="nav-icon">▦</span> All tools <span class="nav-count" id="all-tools-count">20</span></a>
+        <a class="nav-item" href="#favorites"><span class="nav-icon">☆</span> Popular tools</a>
+        <a class="nav-item" href="#about"><span class="nav-icon">ⓘ</span> About this app</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="privacy-card">
+          <span class="privacy-icon">◈</span>
+          <strong>Your files stay private</strong>
+          <p>Files are processed temporarily and cleaned up after two hours.</p>
+        </div>
+        <div class="profile-row">
+          <span class="avatar" id="profile-avatar"></span>
+          <span class="profile-name"><strong id="profile-username"></strong><small id="profile-role"></small></span>
+          <button class="icon-button" id="logout" type="button" title="Sign out" aria-label="Sign out">↗</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <button id="menu-toggle" class="icon-button mobile-menu" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button>
+        <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong>All tools</strong></div>
+        <div class="topbar-actions">
+          <span class="local-badge"><span class="status-dot"></span> Secure workspace</span>
+          <button id="open-admin" class="button button-secondary button-small" hidden><span>⚙</span> Manage accounts</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section id="tools" class="tools-section">
+          <div class="section-heading tools-heading">
+            <div><span class="eyebrow">YOUR TOOLKIT</span><h2>Find the right tool</h2><p>Pick a tool to get started. Your source file is never changed.</p></div>
+            <label class="search-box"><span aria-hidden="true">⌕</span><input id="tool-search" type="search" placeholder="Search tools..." aria-label="Search tools"><kbd>/</kbd></label>
+          </div>
+          <div class="category-tabs" id="category-tabs" role="group" aria-label="Filter tools by category"></div>
+          <div class="tool-count" id="tool-count" aria-live="polite"></div>
+          <div class="tool-grid" id="tool-grid"></div>
+          <div class="empty-state" id="empty-state" hidden>
+            <strong>No tools found</strong>
+            <p>Try a different search or browse one of these popular tools.</p>
+            <div class="empty-suggestions">
+              <button class="text-link" type="button" data-search="merge">Merge PDFs</button>
+              <button class="text-link" type="button" data-search="compress">Compress PDF</button>
+              <button class="text-link" type="button" data-search="convert">Convert files</button>
+              <button class="text-link" type="button" data-search="">Clear search</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="quick-start" id="favorites">
+          <div class="section-heading">
+            <div><span class="eyebrow">QUICK START</span><h2>Popular tools</h2></div>
+            <a class="text-link" href="#tools">View all tools <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="popular-grid" id="popular-tools"></div>
+        </section>
+
+        <section class="hero">
+          <div class="hero-copy">
+            <span class="eyebrow">PDF TOOLS · SECURE WORKSPACE</span>
+            <h1>Work with your PDFs.</h1>
+            <p>Merge or split PDFs, convert documents, manage pages, and extract text.</p>
+          </div>
+        </section>
+
+        <section id="about" class="about-strip">
+          <div><strong>Scanned or Office documents</strong><p>OCR requires Tesseract. LibreOffice improves Office conversions and is required for legacy .doc and .ppt files.</p></div>
+        </section>
+        <footer class="footer"><span>PDF Tools</span><span>Temporary uploads are removed after two hours.</span></footer>
+      </div>
+    </main>
+
+    <div class="modal-backdrop" id="tool-modal" hidden>
+      <section class="tool-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-description" tabindex="-1">
+        <header class="modal-header"><div class="modal-title-wrap"><span class="tool-icon modal-tool-icon" id="modal-icon"></span><div><span class="eyebrow" id="modal-category"></span><h2 id="modal-title"></h2></div></div><button class="icon-button close-modal" data-close-modal aria-label="Close">×</button></header>
+        <p class="modal-description" id="modal-description"></p>
+        <form id="tool-form" class="tool-form" enctype="multipart/form-data"></form>
+        <div id="tool-progress" class="tool-progress" hidden role="status" aria-live="polite" aria-atomic="true">
+          <span class="spinner" aria-hidden="true"></span><span class="progress-message"></span>
+          <span class="progress-track" aria-hidden="true"><span></span></span>
+        </div>
+        <div id="tool-result" class="tool-result" hidden aria-live="polite"></div>
+        <div id="tool-error" class="alert alert-error" hidden role="alert"></div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="admin-modal" hidden>
+      <section class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-title" tabindex="-1">
+        <header class="modal-header"><div><span class="eyebrow">ADMINISTRATION</span><h2 id="admin-title">Manage accounts</h2></div><button class="icon-button close-modal" data-close-modal aria-label="Close">×</button></header>
+        <p class="muted">Invite people you authorize, and manage existing accounts.</p>
+        <div class="invite-box"><div><strong>Invite an approved user</strong><p>Each code can be used once and expires in seven days.</p></div><button class="button button-primary button-small" id="create-invitation">Create invite</button></div>
+        <div id="invitation-result" class="invitation-result" hidden></div>
+        <div class="account-list-header"><strong>Accounts</strong><button id="refresh-users" class="text-link">Refresh</button></div>
+        <div id="account-list" class="account-list"><div class="loading-line">Loading accounts…</div></div>
+        <div id="admin-error" class="alert alert-error" hidden></div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

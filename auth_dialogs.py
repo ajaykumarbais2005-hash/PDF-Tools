@@ -3,7 +3,7 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 
-import auth_store
+from backend import auth_store
 
 
 BG = "#F5F7FF"
