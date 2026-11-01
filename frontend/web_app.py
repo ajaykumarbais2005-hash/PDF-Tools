@@ -584,5 +584,5 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    print("PDF Tools is starting at http://127.0.0.1:5000")
+    print("PDF Tools is available at https://pdf-tools-pves.onrender.com")
     app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5000")), debug=False)

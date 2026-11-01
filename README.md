@@ -69,15 +69,19 @@ Install the requirements above, then run:
 python -m frontend.web_app
 ```
 
-Open `http://127.0.0.1:5000` in a browser. The website listens only on this
-computer; it is not exposed to other devices or the public internet. The first
-visit creates the administrator account. Administrators can issue one-time
-invitations and manage accounts from **Manage accounts**. Desktop and website
-accounts use the same local account database.
+Open the hosted website at <https://pdf-tools-pves.onrender.com>. To use the
+local server instead, open the address printed in the terminal. The local
+website listens only on this computer; it is not exposed to other devices or
+the public internet. The first visit creates the administrator account.
+Administrators can issue one-time invitations and manage accounts from
+**Manage accounts**. The desktop app and local website share the same local
+account database.
 
-Uploaded files are processed locally and are limited to 100 MB each. Temporary
-results expire after two hours and are removed on subsequent website activity;
-download a result before it expires. OCR of scanned pages still requires Tesseract OCR and language data;
+Uploaded files are processed by the server: on Render for the hosted website,
+or on your computer for a local instance. Files are limited to 100 MB each.
+Temporary results expire after two hours and are removed on subsequent website
+activity; download a result before it expires. OCR of scanned pages still
+requires Tesseract OCR and language data;
 Office conversions may use the optional LibreOffice installation described
 above.
 
