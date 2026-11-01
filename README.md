@@ -128,6 +128,10 @@ on Render. The desktop app and local browser interface remain available.
    The service uses a persistent disk for accounts, session signing data, and
    temporary processing files. The blueprint uses a paid Starter service
    because Render's free web services do not provide persistent disks.
+   If the disk is unavailable during startup, the app logs a warning and uses
+   temporary storage so the service can still start. That fallback is not
+   persistent; account data and generated files may be lost when the service
+   restarts. Attach the disk at `/var/data` to preserve them.
 2. Deploy the `frontend` directory as the Vercel project root.
 3. The Vercel rewrites target `https://pdf-tools-api.onrender.com`. If Render
    assigns a different service URL, update the three backend destinations in

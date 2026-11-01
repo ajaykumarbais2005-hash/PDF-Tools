@@ -3,6 +3,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 import docx
 import pptx
@@ -12,6 +13,43 @@ from reportlab.pdfgen import canvas
 from backend import auth_store
 from backend import pdf_backend as backend
 from frontend.web_app import create_app
+
+
+class AuthStorePathTests(unittest.TestCase):
+    def test_render_uses_temporary_storage_if_configured_directory_is_unavailable(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            configured_directory = str(Path(temp_dir) / "unavailable")
+            fallback_directory = str(Path(temp_dir) / "mits-pdf-data")
+            make_directories = auth_store.os.makedirs
+
+            def make_directories_with_unavailable_mount(path, **kwargs):
+                if path == configured_directory:
+                    raise PermissionError("mount is not writable")
+                make_directories(path, **kwargs)
+
+            with (
+                patch.dict(
+                    "os.environ",
+                    {
+                        "RENDER": "true",
+                        "MITS_PDF_DATA_DIR": configured_directory,
+                    },
+                ),
+                patch("backend.auth_store.tempfile.gettempdir", return_value=temp_dir),
+                patch(
+                    "backend.auth_store.os.makedirs",
+                    side_effect=make_directories_with_unavailable_mount,
+                ),
+                self.assertLogs("backend.auth_store", level="WARNING") as logs,
+            ):
+                store = auth_store.AuthStore()
+
+            self.assertEqual(
+                store.database_path,
+                str(Path(fallback_directory) / "accounts.sqlite3"),
+            )
+            self.assertTrue(Path(store.database_path).is_file())
+            self.assertIn("Account data may be lost", logs.output[0])
 
 
 class WebsiteFlowTests(unittest.TestCase):

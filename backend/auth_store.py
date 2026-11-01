@@ -2,12 +2,16 @@
 
 import hashlib
 import hmac
+import logging
 import os
 import secrets
 import sqlite3
+import tempfile
 import time
 from contextlib import contextmanager
 
+
+logger = logging.getLogger(__name__)
 
 PASSWORD_ITERATIONS = 310_000
 MIN_PASSWORD_LENGTH = 12
@@ -25,7 +29,23 @@ def default_database_path():
     """Return the account database path for the current desktop or web install."""
     configured_directory = os.environ.get("MITS_PDF_DATA_DIR")
     if configured_directory:
-        os.makedirs(configured_directory, exist_ok=True)
+        try:
+            os.makedirs(configured_directory, exist_ok=True)
+        except OSError:
+            if os.environ.get("RENDER", "").lower() not in {"1", "true", "yes"}:
+                raise
+
+            fallback_directory = os.path.join(
+                tempfile.gettempdir(), "mits-pdf-data"
+            )
+            os.makedirs(fallback_directory, exist_ok=True)
+            logger.warning(
+                "Configured data directory %s is unavailable; using temporary "
+                "storage at %s. Account data may be lost when the service restarts.",
+                configured_directory,
+                fallback_directory,
+            )
+            return os.path.join(fallback_directory, "accounts.sqlite3")
         return os.path.join(configured_directory, "accounts.sqlite3")
 
     base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
