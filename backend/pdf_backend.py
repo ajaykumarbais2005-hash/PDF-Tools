@@ -20,7 +20,7 @@ import pypdf
 from reportlab.lib import pagesizes
 from reportlab.lib.colors import Color, HexColor
 from reportlab.pdfgen import canvas
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Image as RLImage, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # Office formats
@@ -156,8 +156,8 @@ def reveal_in_explorer(file_path):
 
 def create_pdf(output_path, title="Untitled Document", author="PDF Tools User",
                text_content="", page_size="A4", orientation="portrait",
-               image_path=None, font_size=11):
-    """Create a PDF with escaped text, optional image, and page settings."""
+               image_path=None, font_size=11, image_paths=()):
+    """Create a text PDF with an optional header image and full-page image pages."""
     page_key = (page_size or "A4").strip().lower()
     if page_key not in ("a4", "letter"):
         raise ValueError("Page size must be A4 or Letter.")
@@ -168,6 +168,10 @@ def create_pdf(output_path, title="Untitled Document", author="PDF Tools User",
         raise ValueError("Font size must be between 6 and 72 points.")
     if image_path and not os.path.isfile(image_path):
         raise FileNotFoundError(f"The selected image does not exist: {image_path}")
+    image_paths = list(image_paths or ())
+    missing_images = [path for path in image_paths if not os.path.isfile(path)]
+    if missing_images:
+        raise FileNotFoundError(f"The selected image does not exist: {missing_images[0]}")
 
     doc = SimpleDocTemplate(
         output_path,
@@ -193,12 +197,17 @@ def create_pdf(output_path, title="Untitled Document", author="PDF Tools User",
     )
 
     story = []
-    if title:
-        story.append(Paragraph(escape(str(title)), title_style))
-    meta_text = f"Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-    if author:
-        meta_text = f"Author: {author}  •  " + meta_text
-    story.append(Paragraph(escape(meta_text), meta_style))
+    image_only = bool(image_paths) and not image_path and not str(text_content or "").strip()
+    if image_only:
+        doc.title = str(title or "")
+        doc.author = str(author or "")
+    else:
+        if title:
+            story.append(Paragraph(escape(str(title)), title_style))
+        meta_text = f"Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        if author:
+            meta_text = f"Author: {author}  •  " + meta_text
+        story.append(Paragraph(escape(meta_text), meta_style))
 
     if image_path:
         with Image.open(image_path) as image:
@@ -215,6 +224,20 @@ def create_pdf(output_path, title="Untitled Document", author="PDF Tools User",
             story.append(Paragraph(escape(paragraph), body_style))
         else:
             story.append(Spacer(1, 8))
+
+    max_w, max_h = psize[0] - 120, psize[1] - 120
+    for index, page_image_path in enumerate(image_paths):
+        if index == 0 and not image_only:
+            story.append(PageBreak())
+        elif index > 0:
+            story.append(PageBreak())
+        with Image.open(page_image_path) as image:
+            orig_w, orig_h = image.size
+        if not orig_w or not orig_h:
+            raise ValueError(f"The selected image has invalid dimensions: {page_image_path}")
+        scale = min(max_w / orig_w, max_h / orig_h, 1.0)
+        story.append(RLImage(page_image_path, width=orig_w * scale, height=orig_h * scale))
+
     doc.build(story)
     return {"success": True, "output_path": output_path, "file_size": os.path.getsize(output_path)}
 

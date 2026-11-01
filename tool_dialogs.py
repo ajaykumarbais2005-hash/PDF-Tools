@@ -394,8 +394,9 @@ class BaseToolDialog:
 
 class CreatePDFDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "Create PDF", "Generate a new custom PDF document with text, layout, and image.", width=660, height=680)
+        super().__init__(parent, "Create PDF", "Generate a PDF from text and optional image pages.", width=660, height=760)
         self.action_btn.config(text="Generate PDF")
+        self.image_pages = []
 
         # Card 1: Document Details
         c1 = self.create_card("Document Details")
@@ -437,9 +438,38 @@ class CreatePDFDialog(BaseToolDialog):
             command=self.browse_image
         ).pack(side="right")
 
-        # Card 4: Text Content
-        c4 = self.create_card("Content Text")
-        self.text_box = tk.Text(c4, font=("Arial", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1, height=8)
+        c4 = self.create_card("Image Pages (Optional)")
+        pages_row = tk.Frame(c4, bg=WHITE)
+        pages_row.pack(fill="both", expand=True, padx=16, pady=(4, 8))
+        self.image_pages_list = tk.Listbox(
+            pages_row, font=("Arial", 9), selectmode="extended", height=4,
+            relief="flat", highlightbackground=BORDER, highlightthickness=1,
+        )
+        pages_scroll = tk.Scrollbar(pages_row, orient="vertical", command=self.image_pages_list.yview)
+        self.image_pages_list.configure(yscrollcommand=pages_scroll.set)
+        self.image_pages_list.pack(side="left", fill="both", expand=True)
+        pages_scroll.pack(side="right", fill="y")
+        pages_buttons = tk.Frame(c4, bg=WHITE)
+        pages_buttons.pack(fill="x", padx=16, pady=(0, 6))
+        tk.Button(
+            pages_buttons, text="Add Images...", font=("Arial", 9, "bold"), fg=WHITE,
+            bg=PRIMARY, relief="flat", cursor="hand2", padx=10, pady=4,
+            command=self.add_image_pages,
+        ).pack(side="left", padx=(0, 6))
+        tk.Button(
+            pages_buttons, text="Remove Selected", font=("Arial", 9), fg=DARK,
+            bg="#F3F4F6", relief="flat", cursor="hand2", padx=8, pady=4,
+            command=self.remove_image_pages,
+        ).pack(side="left")
+        self.image_pages_count = tk.Label(
+            c4, text="Each selected image will be added as a separate PDF page.",
+            font=("Arial", 9), fg=SECONDARY, bg=WHITE,
+        )
+        self.image_pages_count.pack(anchor="w", padx=16, pady=(0, 10))
+
+        # Card 5: Text Content
+        c5 = self.create_card("Content Text")
+        self.text_box = tk.Text(c5, font=("Arial", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1, height=8)
         self.text_box.insert("1.0", "Type your document text here...\n\nParagraphs are automatically formatted into professional PDF pages.")
         self.text_box.pack(fill="both", expand=True, padx=16, pady=(4, 14))
 
@@ -451,6 +481,27 @@ class CreatePDFDialog(BaseToolDialog):
         if p:
             self.img_entry.delete(0, tk.END)
             self.img_entry.insert(0, p)
+
+    def add_image_pages(self):
+        paths = filedialog.askopenfilenames(
+            title="Select Images for PDF Pages",
+            filetypes=[("Image Files", ("*.png", "*.jpg", "*.jpeg", "*.bmp"))],
+        )
+        for path in paths:
+            if path not in self.image_pages:
+                self.image_pages.append(path)
+                self.image_pages_list.insert(tk.END, os.path.basename(path))
+        self.image_pages_count.config(
+            text=f"{len(self.image_pages)} image page(s) selected."
+        )
+
+    def remove_image_pages(self):
+        for index in reversed(self.image_pages_list.curselection()):
+            self.image_pages.pop(index)
+            self.image_pages_list.delete(index)
+        self.image_pages_count.config(
+            text=f"{len(self.image_pages)} image page(s) selected."
+        )
 
     def execute(self):
         title = self.title_entry.get().strip()
@@ -469,7 +520,10 @@ class CreatePDFDialog(BaseToolDialog):
             return
 
         def worker(staged_path):
-            return backend.create_pdf(staged_path, title, author, text, psize, orient, img)
+            return backend.create_pdf(
+                staged_path, title, author, text, psize, orient, img,
+                image_paths=self.image_pages,
+            )
 
         def on_success(res):
             self.show_success_view(out_path, f"Size: {backend.format_file_size(res['file_size'])}")

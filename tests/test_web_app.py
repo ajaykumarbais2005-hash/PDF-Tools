@@ -242,6 +242,22 @@ class WebsiteFlowTests(unittest.TestCase):
         payload = run_tool("create-pdf", {"title": "Created PDF", "text_content": "Created from the web app."})
         download_result(payload, ".pdf")
 
+        image_uploads = []
+        for page_number, color in enumerate(("red", "blue"), start=1):
+            image_stream = io.BytesIO()
+            Image.new("RGB", (1200, 1800), color).save(image_stream, format="PNG")
+            image_stream.seek(0)
+            image_uploads.append((image_stream, f"page-{page_number}.png"))
+        payload = run_tool(
+            "create-pdf",
+            {"title": "Image Pages", "text_content": ""},
+            {"files": image_uploads},
+        )
+        image_pdf_bytes = download_result(payload, ".pdf")
+        with backend.pymupdf.open(stream=image_pdf_bytes, filetype="pdf") as image_pdf:
+            self.assertEqual(len(image_pdf), 2)
+            self.assertTrue(all(page.get_images() for page in image_pdf))
+
         payload = run_tool("merge-pdfs", uploads={
             "files": [(io.BytesIO(pdf_bytes), "first.pdf"), (io.BytesIO(pdf_bytes), "second.pdf")]
         })

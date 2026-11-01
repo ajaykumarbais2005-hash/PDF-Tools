@@ -8,6 +8,9 @@ interface. It can merge and split PDFs, manage pages, extract text, convert
 documents, and process scanned pages with optional OCR. Files are processed on
 your computer.
 
+The **Create PDF** tool can include multiple selected images, placing each
+image on its own PDF page.
+
 The desktop interface uses Tkinter. The browser interface runs locally with
 Flask and listens on `127.0.0.1`; it is not intended to be a public or
 multi-device service.

@@ -364,6 +364,10 @@ def create_app(account_store=None, data_directory=None):
 
             if tool_name == "create-pdf":
                 image = save_upload(request.files.get("image"), job_path, 0) if request.files.get("image") else None
+                image_pages = [
+                    save_upload(upload, job_path, index + 1)
+                    for index, upload in enumerate(uploads)
+                ]
                 result = backend.create_pdf(
                     str(output_pdf),
                     title=option("title", "Untitled Document"),
@@ -373,6 +377,7 @@ def create_app(account_store=None, data_directory=None):
                     orientation=option("orientation", "portrait"),
                     image_path=image,
                     font_size=option("font_size", "11"),
+                    image_paths=image_pages,
                 )
                 download_path = output_pdf
                 download_name = output_name(option("filename"), "document.pdf")

@@ -5,6 +5,7 @@ const tools = [
     { name: "orientation", label: "Orientation", type: "select", options: [["Portrait", "portrait"], ["Landscape", "landscape"]] },
     { name: "font_size", label: "Font size (6–72 pt)", type: "number", value: "11", min: "6", max: "72" },
     { name: "image", label: "Optional header image", type: "file", accept: "image/png,image/jpeg,image/bmp" },
+    { name: "image_pages", label: "Optional image pages (select multiple images)", type: "files", accept: "image/png,image/jpeg,image/bmp", required: false, full: true, hint: "Each selected image is placed on its own PDF page." },
     { name: "text_content", label: "Document text", type: "textarea", value: "Type your document text here...", full: true },
     { name: "filename", label: "Download filename", value: "document.pdf" },
   ]},
@@ -260,7 +261,7 @@ function addField(form, field) {
     control.id = `field-${field.name}`;
     control.name = field.name;
     if (field.accept) control.accept = field.accept;
-    control.required = field.name !== "image";
+    control.required = field.required !== false && field.name !== "image";
     const dropzone = document.createElement("label");
     dropzone.className = "file-dropzone";
     dropzone.htmlFor = control.id;
