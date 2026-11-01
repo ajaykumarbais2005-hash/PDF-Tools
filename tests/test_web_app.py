@@ -239,8 +239,14 @@ class WebsiteFlowTests(unittest.TestCase):
                 )
             return content
 
-        payload = run_tool("create-pdf", {"title": "Created PDF", "text_content": "Created from the web app."})
-        download_result(payload, ".pdf")
+        payload = run_tool("create-pdf", {"text_content": "Only the words I entered."})
+        text_pdf_bytes = download_result(payload, ".pdf")
+        with backend.pymupdf.open(stream=text_pdf_bytes, filetype="pdf") as text_pdf:
+            page_text = text_pdf[0].get_text().strip()
+            self.assertEqual(page_text, "Only the words I entered.")
+            self.assertNotIn("My Document", page_text)
+            self.assertNotIn("Type your document text here", page_text)
+            self.assertNotIn("Created:", page_text)
 
         image_uploads = []
         for page_number, color in enumerate(("red", "blue"), start=1):
@@ -248,15 +254,22 @@ class WebsiteFlowTests(unittest.TestCase):
             Image.new("RGB", (1200, 1800), color).save(image_stream, format="PNG")
             image_stream.seek(0)
             image_uploads.append((image_stream, f"page-{page_number}.png"))
+        header_image = io.BytesIO()
+        Image.new("RGB", (120, 180), "green").save(header_image, format="PNG")
+        header_image.seek(0)
         payload = run_tool(
             "create-pdf",
-            {"title": "Image Pages", "text_content": ""},
-            {"files": image_uploads},
+            {"title": "Image Pages", "text_content": "This text must not create an extra page."},
+            {
+                "image": (header_image, "header.png"),
+                "files": image_uploads,
+            },
         )
         image_pdf_bytes = download_result(payload, ".pdf")
         with backend.pymupdf.open(stream=image_pdf_bytes, filetype="pdf") as image_pdf:
             self.assertEqual(len(image_pdf), 2)
             self.assertTrue(all(page.get_images() for page in image_pdf))
+            self.assertTrue(all(not page.get_text().strip() for page in image_pdf))
 
         payload = run_tool("merge-pdfs", uploads={
             "files": [(io.BytesIO(pdf_bytes), "first.pdf"), (io.BytesIO(pdf_bytes), "second.pdf")]
@@ -287,6 +300,13 @@ class WebsiteFlowTests(unittest.TestCase):
         ppt_bytes = download_result(payload, ".pptx")
         self.assertEqual(payload["result"]["ocr_pages"], 0)
         converted_ppt = pptx.Presentation(io.BytesIO(ppt_bytes))
+        with backend.pymupdf.open(stream=pdf_bytes, filetype="pdf") as source_pdf:
+            source_aspect_ratio = source_pdf[0].rect.width / source_pdf[0].rect.height
+        self.assertAlmostEqual(
+            converted_ppt.slide_width / converted_ppt.slide_height,
+            source_aspect_ratio,
+            places=3,
+        )
         converted_text = "\n".join(
             shape.text
             for slide in converted_ppt.slides
@@ -306,8 +326,58 @@ class WebsiteFlowTests(unittest.TestCase):
         self.assertEqual(invalid_dpi.status_code, 400)
         self.assertIn("36 and 600 DPI", invalid_dpi.json["error"])
 
+        single_page_pdf = self.sample_pdf().getvalue()
+        payload = run_tool(
+            "pdf-to-word",
+            uploads={"file": (io.BytesIO(single_page_pdf), "single-page.pdf")},
+        )
+        single_page_bytes = download_result(payload, ".docx")
+        single_page_word = docx.Document(io.BytesIO(single_page_bytes))
+        self.assertEqual(len(single_page_word.sections), 1)
+        with zipfile.ZipFile(io.BytesIO(single_page_bytes)) as archive:
+            document_xml = archive.read("word/document.xml").decode("utf-8")
+            self.assertIn("Website test document", document_xml)
+            self.assertIn("w:txbxContent", document_xml)
+            media_name = next(name for name in archive.namelist() if name.startswith("word/media/"))
+            page_background = Image.open(io.BytesIO(archive.read(media_name))).convert("RGB")
+        with backend.pymupdf.open(stream=single_page_pdf, filetype="pdf") as source_word_pdf:
+            source_page = source_word_pdf[0]
+            text_line = next(
+                line
+                for block in source_page.get_text("dict")["blocks"]
+                if block.get("type") == 0
+                for line in block.get("lines", [])
+            )
+            x0, y0, x1, y1 = text_line["bbox"]
+            scale = 200 / 72
+            crop = page_background.crop((
+                int(x0 * scale),
+                int(y0 * scale),
+                int(x1 * scale) + 1,
+                int(y1 * scale) + 1,
+            ))
+            self.assertFalse(any(
+                min(crop.getpixel((x, y))) <= 240
+                for y in range(crop.height)
+                for x in range(crop.width)
+            ))
+
         payload = run_tool("pdf-to-word", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
-        download_result(payload, ".docx")
+        converted_word_bytes = download_result(payload, ".docx")
+        converted_word = docx.Document(io.BytesIO(converted_word_bytes))
+        self.assertEqual(len(converted_word.sections), 3)
+        with zipfile.ZipFile(io.BytesIO(converted_word_bytes)) as archive:
+            document_xml = archive.read("word/document.xml").decode("utf-8")
+            self.assertEqual(document_xml.count("<w:txbxContent>"), 3)
+            self.assertEqual(
+                sum(name.startswith("word/media/") for name in archive.namelist()),
+                1,
+            )
+        self.assertAlmostEqual(
+            converted_word.sections[0].page_width / converted_word.sections[0].page_height,
+            source_aspect_ratio,
+            places=3,
+        )
 
         payload = run_tool("pdf-to-image", uploads={"file": (io.BytesIO(pdf_bytes), "source.pdf")})
         images_zip = download_result(payload, ".zip")

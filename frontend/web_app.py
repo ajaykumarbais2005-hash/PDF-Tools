@@ -370,8 +370,8 @@ def create_app(account_store=None, data_directory=None):
                 ]
                 result = backend.create_pdf(
                     str(output_pdf),
-                    title=option("title", "Untitled Document"),
-                    author=option("author", "PDF Tools User"),
+                    title=option("title"),
+                    author=option("author"),
                     text_content=option("text_content"),
                     page_size=option("page_size", "A4"),
                     orientation=option("orientation", "portrait"),
@@ -430,9 +430,11 @@ def create_app(account_store=None, data_directory=None):
                     )
                     download_name, message = "watermarked.pdf", "Your watermarked PDF is ready."
                 elif tool_name == "pdf-to-ppt":
+                    slide_size = option("slide_size", "match")
                     result = backend.pdf_to_ppt(input_path, str(job_path / "result.pptx"),
                                                 dpi=option("dpi", "150"),
-                                                widescreen=option("widescreen", "true") == "true",
+                                                widescreen=slide_size == "widescreen",
+                                                match_page_size=slide_size == "match",
                                                 language=option("language", "eng"))
                     output_pdf = job_path / "result.pptx"
                     download_name, message = "converted.pptx", "Your PowerPoint file is ready."

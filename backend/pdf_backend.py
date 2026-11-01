@@ -10,7 +10,6 @@ import math
 import shutil
 import subprocess
 import tempfile
-from datetime import datetime
 from xml.sax.saxutils import escape
 from PIL import Image
 
@@ -26,6 +25,10 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 # Office formats
 import docx
 import pptx
+from docx.enum.section import WD_SECTION_START
+from docx.oxml import parse_xml
+from docx.oxml.ns import qn
+from docx.shared import Pt as WordPt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_ANCHOR
 from pptx.util import Inches, Pt
@@ -154,7 +157,7 @@ def reveal_in_explorer(file_path):
 # 1. CREATE PDF
 # ==========================================
 
-def create_pdf(output_path, title="Untitled Document", author="PDF Tools User",
+def create_pdf(output_path, title="", author="",
                text_content="", page_size="A4", orientation="portrait",
                image_path=None, font_size=11, image_paths=()):
     """Create a text PDF with an optional header image and full-page image pages."""
@@ -186,30 +189,18 @@ def create_pdf(output_path, title="Untitled Document", author="PDF Tools User",
         "DocTitle", parent=styles["Heading1"], fontName="Helvetica-Bold",
         fontSize=24, leading=28, textColor=HexColor("#101B42"), spaceAfter=6,
     )
-    meta_style = ParagraphStyle(
-        "DocMeta", parent=styles["Normal"], fontName="Helvetica-Oblique",
-        fontSize=10, leading=14, textColor=HexColor("#667085"), spaceAfter=18,
-    )
     body_style = ParagraphStyle(
         "DocBody", parent=styles["Normal"], fontName="Helvetica",
         fontSize=int(font_size), leading=int(font_size) + 4,
         textColor=HexColor("#111827"), spaceAfter=10,
     )
 
+    image_only = bool(image_paths)
     story = []
-    image_only = bool(image_paths) and not image_path and not str(text_content or "").strip()
-    if image_only:
-        doc.title = str(title or "")
-        doc.author = str(author or "")
-    else:
-        if title:
-            story.append(Paragraph(escape(str(title)), title_style))
-        meta_text = f"Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        if author:
-            meta_text = f"Author: {author}  •  " + meta_text
-        story.append(Paragraph(escape(meta_text), meta_style))
+    if title and not image_only:
+        story.append(Paragraph(escape(str(title)), title_style))
 
-    if image_path:
+    if image_path and not image_only:
         with Image.open(image_path) as image:
             orig_w, orig_h = image.size
         if not orig_w or not orig_h:
@@ -219,11 +210,15 @@ def create_pdf(output_path, title="Untitled Document", author="PDF Tools User",
         story.append(RLImage(image_path, width=orig_w * scale, height=orig_h * scale))
         story.append(Spacer(1, 14))
 
-    for paragraph in str(text_content or "").split("\n"):
-        if paragraph.strip():
-            story.append(Paragraph(escape(paragraph), body_style))
-        else:
-            story.append(Spacer(1, 8))
+    if not image_only and str(text_content or "").strip():
+        for paragraph in str(text_content or "").split("\n"):
+            if paragraph.strip():
+                story.append(Paragraph(escape(paragraph), body_style))
+            else:
+                story.append(Spacer(1, 8))
+
+    if not story and not image_paths:
+        raise ValueError("Enter text or add an image before creating the PDF.")
 
     max_w, max_h = psize[0] - 120, psize[1] - 120
     for index, page_image_path in enumerate(image_paths):
@@ -578,7 +573,8 @@ def _ensure_tesseract_on_path():
     return None
 
 
-def pdf_to_ppt(input_path, output_path, dpi=150, widescreen=True, language="eng"):
+def pdf_to_ppt(input_path, output_path, dpi=150, widescreen=True, language="eng",
+               match_page_size=False):
     """
     Convert PDF text into editable PowerPoint text boxes, using OCR for scanned pages.
     """
@@ -592,7 +588,16 @@ def pdf_to_ppt(input_path, output_path, dpi=150, widescreen=True, language="eng"
     doc = pymupdf.open(input_path)
     prs = pptx.Presentation()
 
-    if widescreen:
+    if match_page_size and len(doc):
+        source_rect = doc[0].rect
+        max_dimension = Inches(56)
+        size_scale = min(
+            max_dimension / (max(source_rect.width, source_rect.height) * 12700),
+            1.0,
+        )
+        prs.slide_width = int(source_rect.width * 12700 * size_scale)
+        prs.slide_height = int(source_rect.height * 12700 * size_scale)
+    elif widescreen:
         prs.slide_width = Inches(13.333)
         prs.slide_height = Inches(7.5)
     else:
@@ -700,24 +705,165 @@ def pdf_to_ppt(input_path, output_path, dpi=150, widescreen=True, language="eng"
 
 def pdf_to_word(input_path, output_path):
     """
-    Extract structured text blocks, headings, and paragraphs from PDF
-    into a Word (.docx) document.
+    Preserve PDF page layout with an image background and editable text boxes.
     """
     doc = pymupdf.open(input_path)
     word_doc = docx.Document()
-    
-    for page_idx, page in enumerate(doc):
-        blocks = page.get_text("blocks")
-        for b in blocks:
-            # b: (x0, y0, x1, y1, text, block_no, block_type)
-            if b[6] == 0:  # text block
-                text = b[4].strip()
-                if text:
-                    word_doc.add_paragraph(text)
-        if page_idx < len(doc) - 1:
-            word_doc.add_page_break()
-            
-    doc.close()
+    emus_per_point = 12700
+    textbox_id = 1
+
+    def add_textbox(paragraph, line, page_width, page_height):
+        nonlocal textbox_id
+        x0, y0, x1, y1 = line["bbox"]
+        left = max(0, min(int(x0 * emus_per_point), int(page_width * emus_per_point)))
+        top = max(0, min(int(y0 * emus_per_point), int(page_height * emus_per_point)))
+        width = max(int((x1 - x0) * emus_per_point), int(2 * emus_per_point))
+        height = max(int((y1 - y0) * emus_per_point), int(4 * emus_per_point))
+        run_xml = []
+        for span in line.get("spans", []):
+            text = span.get("text", "")
+            if not text:
+                continue
+            font_name = escape(str(span.get("font", "Arial")), {'"': "&quot;"})
+            font_size = max(1, round(float(span.get("size", 10)) * 2))
+            color = int(span.get("color", 0))
+            flags = int(span.get("flags", 0))
+            run_xml.append(
+                '<w:r><w:rPr>'
+                f'<w:rFonts w:ascii="{font_name}" w:hAnsi="{font_name}"/>'
+                f'<w:sz w:val="{font_size}"/>'
+                f'<w:color w:val="{color:06X}"/>'
+                f'{"<w:b/>" if flags & 16 else ""}'
+                f'{"<w:i/>" if flags & 2 else ""}'
+                '</w:rPr><w:t xml:space="preserve">'
+                f'{escape(text)}</w:t></w:r>'
+            )
+        if not run_xml:
+            return
+
+        shape_xml = (
+            '<w:drawing xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
+            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+            'xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">'
+            '<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" '
+            f'relativeHeight="{textbox_id}" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1">'
+            '<wp:simplePos x="0" y="0"/>'
+            f'<wp:positionH relativeFrom="page"><wp:posOffset>{left}</wp:posOffset></wp:positionH>'
+            f'<wp:positionV relativeFrom="page"><wp:posOffset>{top}</wp:posOffset></wp:positionV>'
+            f'<wp:extent cx="{width}" cy="{height}"/>'
+            '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
+            '<wp:wrapNone/>'
+            f'<wp:docPr id="{textbox_id}" name="Editable PDF text {textbox_id}"/>'
+            '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>'
+            '<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">'
+            '<wps:wsp><wps:cNvSpPr txBox="1"/>'
+            '<wps:spPr><a:xfrm><a:off x="0" y="0"/>'
+            f'<a:ext cx="{width}" cy="{height}"/></a:xfrm>'
+            '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+            '<a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>'
+            f'<wps:txbx><w:txbxContent><w:p>{"".join(run_xml)}</w:p></w:txbxContent></wps:txbx>'
+            '<wps:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t">'
+            '<a:noAutofit/></wps:bodyPr></wps:wsp>'
+            '</a:graphicData></a:graphic></wp:anchor></w:drawing>'
+        )
+        paragraph.add_run()._r.append(parse_xml(shape_xml))
+        textbox_id += 1
+
+    try:
+        for page_idx in range(doc.page_count):
+            page = doc.load_page(page_idx)
+            if page_idx:
+                section = word_doc.add_section(WD_SECTION_START.NEW_PAGE)
+            else:
+                section = word_doc.sections[0]
+
+            page_width = page.rect.width
+            page_height = page.rect.height
+            section.page_width = WordPt(page_width)
+            section.page_height = WordPt(page_height)
+            section.top_margin = WordPt(0)
+            section.bottom_margin = WordPt(0)
+            section.left_margin = WordPt(0)
+            section.right_margin = WordPt(0)
+            section.header_distance = WordPt(0)
+            section.footer_distance = WordPt(0)
+
+            page_dict = page.get_text("dict")
+            if not isinstance(page_dict, dict):
+                raise TypeError("Could not extract text layout from a PDF page.")
+            text_lines = [
+                line
+                for block in page_dict["blocks"]
+                if block.get("type") == 0
+                for line in block.get("lines", [])
+                if any(span.get("text", "").strip() for span in line.get("spans", []))
+            ]
+            for line in text_lines:
+                x0, y0, x1, y1 = line["bbox"]
+                page.add_redact_annot(
+                    pymupdf.Rect(x0 - 0.5, y0 - 0.5, x1 + 0.5, y1 + 0.5),
+                    fill=None,
+                )
+            if text_lines:
+                page.apply_redactions(
+                    images=0,
+                    graphics=0,
+                )
+                background = page.get_pixmap(dpi=200, alpha=False).tobytes("png")
+            else:
+                background = page.get_pixmap(dpi=200, alpha=False).tobytes("png")
+
+            paragraph = word_doc.add_paragraph()
+            paragraph.paragraph_format.space_before = WordPt(0)
+            paragraph.paragraph_format.space_after = WordPt(0)
+            paragraph.paragraph_format.line_spacing = 1
+            background_picture = paragraph.add_run().add_picture(
+                io.BytesIO(background),
+                width=WordPt(page_width),
+                height=WordPt(page_height),
+            )
+            background_anchor = background_picture._inline
+            background_anchor.tag = qn("wp:anchor")
+            for name, value in {
+                "distT": "0", "distB": "0", "distL": "0", "distR": "0",
+                "simplePos": "0", "relativeHeight": "0", "behindDoc": "1",
+                "locked": "0", "layoutInCell": "1", "allowOverlap": "1",
+            }.items():
+                background_anchor.set(name, value)
+            simple_pos = parse_xml(
+                '<wp:simplePos xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" x="0" y="0"/>'
+            )
+            position_h = parse_xml(
+                '<wp:positionH xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionH>'
+            )
+            position_v = parse_xml(
+                '<wp:positionV xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionV>'
+            )
+            background_anchor.insert(0, simple_pos)
+            background_anchor.insert(1, position_h)
+            background_anchor.insert(2, position_v)
+            effect_extent = parse_xml(
+                '<wp:effectExtent xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" l="0" t="0" r="0" b="0"/>'
+            )
+            background_anchor.insert(4, effect_extent)
+            wrap = parse_xml(
+                '<wp:wrapNone xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"/>'
+            )
+            background_anchor.insert(5, wrap)
+            background_doc_pr = background_anchor.find(qn("wp:docPr"))
+            if background_doc_pr is None:
+                raise RuntimeError("Could not create a Word page background.")
+            background_doc_pr.set("id", str(textbox_id))
+            background_doc_pr.set("name", f"PDF page background {page_idx + 1}")
+            textbox_id += 1
+
+            for line in text_lines:
+                add_textbox(paragraph, line, page_width, page_height)
+
+    finally:
+        doc.close()
+
     word_doc.save(output_path)
     
     return {

@@ -1,12 +1,12 @@
 const tools = [
-  { id: "create-pdf", title: "Create PDF", desc: "Turn your text into a polished PDF.", category: "Create", icon: "✦", fields: [
-    { name: "title", label: "Document title", value: "My Document" }, { name: "author", label: "Author", value: "PDF Tools User" },
+  { id: "create-pdf", title: "Create PDF", desc: "Turn your text or selected images into a PDF.", category: "Create", icon: "✦", fields: [
+    { name: "title", label: "Document title (optional)", value: "", placeholder: "Leave blank to omit a title" }, { name: "author", label: "Author (optional)", value: "", placeholder: "Optional; not printed in the PDF" },
     { name: "page_size", label: "Page size", type: "select", options: [["A4", "A4"], ["Letter", "Letter"]] },
     { name: "orientation", label: "Orientation", type: "select", options: [["Portrait", "portrait"], ["Landscape", "landscape"]] },
     { name: "font_size", label: "Font size (6–72 pt)", type: "number", value: "11", min: "6", max: "72" },
     { name: "image", label: "Optional header image", type: "file", accept: "image/png,image/jpeg,image/bmp" },
-    { name: "image_pages", label: "Optional image pages (select multiple images)", type: "files", accept: "image/png,image/jpeg,image/bmp", required: false, full: true, hint: "Each selected image is placed on its own PDF page." },
-    { name: "text_content", label: "Document text", type: "textarea", value: "Type your document text here...", full: true },
+    { name: "image_pages", label: "Selected image pages (optional)", type: "files", accept: "image/png,image/jpeg,image/bmp", required: false, full: true, hint: "Each selected image becomes one page. When images are selected, the PDF contains only those pages." },
+    { name: "text_content", label: "Document text", type: "textarea", value: "", placeholder: "Write your text here...", full: true },
     { name: "filename", label: "Download filename", value: "document.pdf" },
   ]},
   { id: "merge-pdfs", title: "Merge PDFs", desc: "Combine documents in the order you choose.", category: "Organize", icon: "▤", popular: true, fields: [
@@ -39,13 +39,13 @@ const tools = [
     { name: "pages", label: "Pages", value: "all", hint: "Example: all, 1, 1-5" },
     { name: "image", label: "Optional stamp image (overrides text)", type: "file", accept: "image/png,image/jpeg,image/bmp", full: true },
   ]},
-  { id: "pdf-to-ppt", title: "PDF to PowerPoint", desc: "Create editable slides from PDF text; scanned pages are read with OCR.", category: "Convert", popular: true, icon: "▰", fields: [
+  { id: "pdf-to-ppt", title: "PDF to PowerPoint", desc: "Create editable slides that match the PDF page size; scanned pages are read with OCR.", category: "Convert", popular: true, icon: "▰", fields: [
     { name: "file", label: "PDF file", type: "file", accept: ".pdf", full: true },
+    { name: "slide_size", label: "Slide size", type: "select", options: [["Match PDF page (recommended)", "match"], ["16:9 widescreen", "widescreen"], ["4:3 standard", "standard"]] },
     { name: "dpi", label: "OCR resolution (36–600 DPI)", type: "number", value: "150", min: "36", max: "600" },
     { name: "language", label: "OCR language code", value: "eng", hint: "Use an installed Tesseract language, such as eng." },
-    { name: "widescreen", label: "Widescreen slides", type: "checkbox", checked: true },
   ]},
-  { id: "pdf-to-word", title: "PDF to Word", desc: "Extract PDF text into a Word document.", category: "Convert", icon: "▣", fields: [
+  { id: "pdf-to-word", title: "PDF to Word", desc: "Keep the page appearance and edit extracted text in positioned text boxes. Scanned pages remain images.", category: "Convert", icon: "▣", fields: [
     { name: "file", label: "PDF file", type: "file", accept: ".pdf", full: true },
   ]},
   { id: "pdf-to-image", title: "PDF to Images", desc: "Export pages as PNG, JPEG, or WebP.", category: "Convert", icon: "▧", fields: [
@@ -242,6 +242,7 @@ function addField(form, field) {
   } else if (field.type === "textarea") {
     control = document.createElement("textarea");
     control.value = field.value || "";
+    if (field.placeholder) control.placeholder = field.placeholder;
   } else if (field.type === "checkbox") {
     const row = document.createElement("label");
     row.className = "checkbox-row";
@@ -283,6 +284,12 @@ function addField(form, field) {
     fileError.setAttribute("role", "status");
     group.append(label, dropzone, control, selected, fileError);
 
+    const updateImagePageMode = () => {
+      if (field.name !== "image_pages") return;
+      const textGroup = group.parentElement.querySelector('[data-field-name="text_content"]');
+      if (textGroup) textGroup.hidden = control.files.length > 0;
+    };
+
     const showFiles = () => {
       selected.replaceChildren();
       const files = [...control.files];
@@ -309,6 +316,7 @@ function addField(form, field) {
           remaining.forEach((item) => transfer.items.add(item));
           control.files = transfer.files;
           showFiles();
+          updateImagePageMode();
         });
         row.append(fileName, fileSize, remove);
         selected.append(row);
@@ -317,7 +325,10 @@ function addField(form, field) {
       fileError.textContent = "";
       dropzone.classList.toggle("has-files", files.length > 0);
     };
-    control.addEventListener("change", showFiles);
+    control.addEventListener("change", () => {
+      showFiles();
+      updateImagePageMode();
+    });
     for (const eventName of ["dragenter", "dragover"]) {
       dropzone.addEventListener(eventName, (event) => {
         event.preventDefault();
@@ -343,6 +354,7 @@ function addField(form, field) {
       });
       control.files = transfer.files;
       showFiles();
+      updateImagePageMode();
       if (rejected) {
         fileError.textContent = `${rejected} file${rejected === 1 ? "" : "s"} skipped: choose ${field.accept.replaceAll(",", ", ")} files.`;
         fileError.hidden = false;
@@ -359,6 +371,7 @@ function addField(form, field) {
     control = document.createElement("input");
     control.type = field.type || "text";
     if (field.value !== undefined) control.value = field.value;
+    if (field.placeholder) control.placeholder = field.placeholder;
     if (field.min) control.min = field.min;
     if (field.max) control.max = field.max;
     if (field.step) control.step = field.step;

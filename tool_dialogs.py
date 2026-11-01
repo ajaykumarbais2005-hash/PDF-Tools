@@ -403,12 +403,10 @@ class CreatePDFDialog(BaseToolDialog):
         
         tk.Label(c1, text="Title", font=("Arial", 10), fg=DARK, bg=WHITE).pack(anchor="w", padx=16, pady=(6, 2))
         self.title_entry = tk.Entry(c1, font=("Arial", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1)
-        self.title_entry.insert(0, "My Document")
         self.title_entry.pack(fill="x", padx=16, pady=(0, 8), ipady=5)
 
         tk.Label(c1, text="Author", font=("Arial", 10), fg=DARK, bg=WHITE).pack(anchor="w", padx=16, pady=(0, 2))
         self.author_entry = tk.Entry(c1, font=("Arial", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1)
-        self.author_entry.insert(0, "PDF Tools User")
         self.author_entry.pack(fill="x", padx=16, pady=(0, 10), ipady=5)
 
         # Card 2: Layout & Format
@@ -438,7 +436,7 @@ class CreatePDFDialog(BaseToolDialog):
             command=self.browse_image
         ).pack(side="right")
 
-        c4 = self.create_card("Image Pages (Optional)")
+        c4 = self.create_card("Selected Image Pages (Optional)")
         pages_row = tk.Frame(c4, bg=WHITE)
         pages_row.pack(fill="both", expand=True, padx=16, pady=(4, 8))
         self.image_pages_list = tk.Listbox(
@@ -462,15 +460,14 @@ class CreatePDFDialog(BaseToolDialog):
             command=self.remove_image_pages,
         ).pack(side="left")
         self.image_pages_count = tk.Label(
-            c4, text="Each selected image will be added as a separate PDF page.",
+            c4, text="Each selected image becomes one page. If images are selected, the PDF contains only those pages.",
             font=("Arial", 9), fg=SECONDARY, bg=WHITE,
         )
         self.image_pages_count.pack(anchor="w", padx=16, pady=(0, 10))
 
         # Card 5: Text Content
-        c5 = self.create_card("Content Text")
-        self.text_box = tk.Text(c5, font=("Arial", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1, height=8)
-        self.text_box.insert("1.0", "Type your document text here...\n\nParagraphs are automatically formatted into professional PDF pages.")
+        self.text_card = self.create_card("Content Text")
+        self.text_box = tk.Text(self.text_card, font=("Arial", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1, height=8)
         self.text_box.pack(fill="both", expand=True, padx=16, pady=(4, 14))
 
     def browse_image(self):
@@ -491,6 +488,7 @@ class CreatePDFDialog(BaseToolDialog):
             if path not in self.image_pages:
                 self.image_pages.append(path)
                 self.image_pages_list.insert(tk.END, os.path.basename(path))
+        self.update_image_page_mode()
         self.image_pages_count.config(
             text=f"{len(self.image_pages)} image page(s) selected."
         )
@@ -499,9 +497,16 @@ class CreatePDFDialog(BaseToolDialog):
         for index in reversed(self.image_pages_list.curselection()):
             self.image_pages.pop(index)
             self.image_pages_list.delete(index)
+        self.update_image_page_mode()
         self.image_pages_count.config(
             text=f"{len(self.image_pages)} image page(s) selected."
         )
+
+    def update_image_page_mode(self):
+        if self.image_pages:
+            self.text_card.pack_forget()
+        else:
+            self.text_card.pack(fill="x", padx=12, pady=8)
 
     def execute(self):
         title = self.title_entry.get().strip()
@@ -979,10 +984,20 @@ class PDFToPPTDialog(BaseToolDialog):
         row = tk.Frame(c2, bg=WHITE)
         row.pack(fill="x", padx=16, pady=8)
 
-        tk.Label(row, text="Aspect Ratio:", font=("Arial", 10), fg=DARK, bg=WHITE).pack(side="left")
-        self.wide_var = tk.BooleanVar(value=True)
-        tk.Radiobutton(row, text="16:9 (Widescreen)", variable=self.wide_var, value=True, bg=WHITE).pack(side="left", padx=8)
-        tk.Radiobutton(row, text="4:3 (Standard)", variable=self.wide_var, value=False, bg=WHITE).pack(side="left")
+        tk.Label(row, text="Slide Size:", font=("Arial", 10), fg=DARK, bg=WHITE).pack(side="left")
+        self.slide_size_var = tk.StringVar(value="match")
+        tk.Radiobutton(
+            row, text="Match PDF (recommended)", variable=self.slide_size_var,
+            value="match", bg=WHITE,
+        ).pack(side="left", padx=8)
+        tk.Radiobutton(
+            row, text="16:9 Widescreen", variable=self.slide_size_var,
+            value="widescreen", bg=WHITE,
+        ).pack(side="left", padx=8)
+        tk.Radiobutton(
+            row, text="4:3 Standard", variable=self.slide_size_var,
+            value="standard", bg=WHITE,
+        ).pack(side="left")
 
         row2 = tk.Frame(c2, bg=WHITE)
         row2.pack(fill="x", padx=16, pady=(0, 10))
@@ -1005,10 +1020,14 @@ class PDFToPPTDialog(BaseToolDialog):
             return
 
         dpi = self.dpi_var.get()
-        widescreen = self.wide_var.get()
+        slide_size = self.slide_size_var.get()
 
         def worker(staged_path):
-            return backend.pdf_to_ppt(in_path, staged_path, dpi=dpi, widescreen=widescreen)
+            return backend.pdf_to_ppt(
+                in_path, staged_path, dpi=dpi,
+                widescreen=slide_size == "widescreen",
+                match_page_size=slide_size == "match",
+            )
 
         def on_success(res):
             self.show_success_view(out_path, f"Converted {res['slides_count']} PDF pages into presentation slides.")
@@ -1022,7 +1041,11 @@ class PDFToPPTDialog(BaseToolDialog):
 
 class PDFToWordDialog(BaseToolDialog):
     def __init__(self, parent):
-        super().__init__(parent, "PDF to Word", "Convert PDF document text and structure into an editable Word (.docx) document.", width=620, height=520)
+        super().__init__(
+            parent, "PDF to Word",
+            "Keep the page appearance and edit text in positioned boxes. Scanned pages remain images.",
+            width=620, height=520,
+        )
         self.action_btn.config(text="Convert to Word")
 
         self.file_entry, self.file_info = self.create_file_selector("Select PDF to Convert")

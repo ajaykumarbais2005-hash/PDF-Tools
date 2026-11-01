@@ -31,10 +31,14 @@ python -m pip install -r requirements.txt
 for validation. Update those pins together and run the test suite when upgrading
 dependencies.
 
-PDF-to-PowerPoint creates editable text boxes and uses OCR for scanned pages.
-Scanned-page OCR requires Tesseract OCR and the selected language data (English
-is `eng`). Text positioning is approximate and original graphics are not
-included in the editable slides. Office conversions use a built-in
+PDF-to-PowerPoint creates editable text boxes, matches the source PDF page size
+by default, and uses OCR for scanned pages. Widescreen and standard slide sizes
+are also available. Scanned-page OCR requires Tesseract OCR and the selected
+language data (English is `eng`). Text positioning is approximate and original
+graphics are not included in the editable slides. PDF-to-Word preserves each
+page's appearance with a page image background and editable, positioned text
+boxes over extracted text. Editing text may change its alignment, and scanned
+pages without an OCR text layer remain image-only. Office conversions use a built-in
 `.docx`/`.pptx` fallback; LibreOffice is optional for more faithful rendering
 and is required for legacy `.doc` and `.ppt` files.
 
